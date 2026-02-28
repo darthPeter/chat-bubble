@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Bubble Widget — Demo</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      max-width: 800px;
+      margin: 60px auto;
+      padding: 0 20px;
+      color: #333;
+      line-height: 1.6;
+    }
+    h1 { margin-bottom: 8px; }
+    p { color: #666; }
+    code {
+      background: #f4f4f5;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .note {
+      margin-top: 40px;
+      padding: 16px 20px;
+      background: #fef3c7;
+      border-radius: 8px;
+      font-size: 14px;
+      color: #92400e;
+    }
+  </style>
+</head>
+<body>
+  <h1>Chat Bubble Widget Demo</h1>
+  <p>The chat bubble should appear in the bottom-right corner.</p>
+  <p>Configure it via <code>data-*</code> attributes on the script tag.</p>
+
+  <div class="note">
+    <strong>Note:</strong> This demo uses a placeholder webhook URL.
+    Replace <code>data-webhook</code> with your real n8n endpoint to enable live chat.
+  </div>
+
+  <!-- ✅ Chat Bubble Widget -->
+  <script
+    src="./widget.js"
+    data-webhook="https://your-n8n.domain.com/webhook/chat-token"
+    data-color="#2196F3"
+    data-title="Eva — Assistant"
+    data-logo=""
+  ></script>
+</body>
+</html>
