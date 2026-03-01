@@ -322,7 +322,9 @@
 
       // 2. Load Twilio SDK and init client
       const TwilioConversations = await loadTwilioSDK();
-      twilioClient = await TwilioConversations.Client.create(token);
+      const clientOpts = {};
+      if (data.region) clientOpts.region = data.region;
+      twilioClient = await TwilioConversations.Client.create(token, clientOpts);
 
       // 3. Join conversation
       try {
