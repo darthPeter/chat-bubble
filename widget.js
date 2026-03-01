@@ -8,6 +8,7 @@
     color: scriptTag.getAttribute("data-color") || "#2C3E50",
     title: scriptTag.getAttribute("data-title") || "Chat",
     logo: scriptTag.getAttribute("data-logo") || "",
+    clientKey: scriptTag.getAttribute("data-client-key") || "",
   };
 
   // ── Twilio SDK loader ──────────────────────────────────────────────
@@ -309,10 +310,13 @@
       const resp = await fetch(CFG.webhook, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identity }),
+        body: JSON.stringify({ identity, client_key: CFG.clientKey || undefined }),
       });
 
-      if (!resp.ok) throw new Error(`Token request failed (${resp.status})`);
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => null);
+        throw new Error(errData?.error || `Token request failed (${resp.status})`);
+      }
       const data = await resp.json();
       const { token, conversation_sid } = data;
 
@@ -380,7 +384,7 @@
           const r = await fetch(CFG.webhook, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ identity, refresh: true }),
+            body: JSON.stringify({ identity, refresh: true, client_key: CFG.clientKey || undefined }),
           });
           const d = await r.json();
           await twilioClient.updateToken(d.token);
