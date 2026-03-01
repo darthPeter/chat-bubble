@@ -394,7 +394,7 @@
     } catch (err) {
       console.error("[ChatBubble] Connection error:", err);
       setHeaderStatus("Offline");
-      setStatus("Could not connect to chat. Please try again later.", "error");
+      setStatus(`Error: ${err.message || err}`, "error");
       twilioClient = null;
       activeConversation = null;
     }
