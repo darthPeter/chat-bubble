@@ -151,6 +151,11 @@
       max-width:80%;padding:10px 14px;
       border-radius:var(--cb-msg-radius);
       font-size:var(--cb-font-size);line-height:1.45;word-wrap:break-word;
+      animation:cb-msgIn .3s ease-out both;
+    }
+    @keyframes cb-msgIn{
+      from{opacity:0;transform:translateY(12px)}
+      to{opacity:1;transform:translateY(0)}
     }
     .cb-msg.bot{
       align-self:flex-start;
@@ -169,15 +174,19 @@
       background:var(--cb-msg-bot-bg);border:var(--cb-msg-bot-border);
       border-radius:var(--cb-msg-radius);border-bottom-left-radius:4px;
       display:none;
+      opacity:0;transition:opacity .3s ease-out;
     }
-    .cb-typing.active{display:flex;gap:4px;align-items:center}
+    .cb-typing.active{display:flex;gap:5px;align-items:center;opacity:1}
     .cb-typing-dot{
-      width:7px;height:7px;border-radius:50%;background:#aaa;
-      animation:cb-blink 1.4s infinite both;
+      width:8px;height:8px;border-radius:50%;background:#999;
+      animation:cb-bounce 1.4s infinite ease-in-out;
     }
     .cb-typing-dot:nth-child(2){animation-delay:.2s}
     .cb-typing-dot:nth-child(3){animation-delay:.4s}
-    @keyframes cb-blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+    @keyframes cb-bounce{
+      0%,80%,100%{opacity:.3;transform:translateY(0)}
+      40%{opacity:1;transform:translateY(-4px)}
+    }
 
     /* ── Input area ──────────────────────────────────────── */
     .cb-input-area{
@@ -334,6 +343,15 @@
   const statusBanner = shadow.querySelector(".cb-status-banner");
   const headerStatus = shadow.querySelector(".cb-header-status");
 
+  // ── Scroll helpers ──────────────────────────────────────────────────
+  function isNearBottom(threshold = 100) {
+    return messagesEl.scrollHeight - messagesEl.scrollTop - messagesEl.clientHeight <= threshold;
+  }
+
+  function scrollToBottom(behavior = "smooth") {
+    messagesEl.scrollTo({ top: messagesEl.scrollHeight, behavior });
+  }
+
   // ── UI helpers ─────────────────────────────────────────────────────
   function toggleChat() {
     isOpen = !isOpen;
@@ -342,6 +360,7 @@
     if (isOpen) {
       inputEl.focus();
       if (!twilioClient) connectTwilio();
+      else scrollToBottom("instant");
     }
   }
 
@@ -350,12 +369,17 @@
     el.className = `cb-msg ${sender}`;
     el.textContent = text;
     messagesEl.insertBefore(el, typingEl);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+    // Always scroll for own messages; only scroll for bot if user is near bottom
+    if (sender === "user" || isNearBottom()) {
+      requestAnimationFrame(() => scrollToBottom());
+    }
   }
 
   function showTyping(on) {
     typingEl.classList.toggle("active", on);
-    if (on) messagesEl.scrollTop = messagesEl.scrollHeight;
+    if (on && isNearBottom()) {
+      requestAnimationFrame(() => scrollToBottom());
+    }
   }
 
   function setStatus(text, type) {
@@ -390,8 +414,11 @@
 
     try {
       await activeConversation.sendMessage(text);
+      // Show typing indicator while waiting for bot reply
+      showTyping(true);
     } catch (err) {
       console.error("[ChatBubble] Send failed:", err);
+      showTyping(false);
       setStatus("Failed to send message. Please try again.", "error");
     }
   }
