@@ -130,6 +130,10 @@ Single vanilla JS file, no build step. Twilio SDK loaded dynamically from CDN.
 - Token refresh via `tokenAboutToExpire` event
 - Mobile responsive (full-screen below 480px)
 - **UX**: Smart auto-scroll (100px threshold, smooth behavior), message slide-up + fade-in animations (300ms), bouncing typing dots shown after send / hidden on reply
+- **Bot markdown**: lightweight formatter renders `\n`, `**bold**`, `*italic*` in bot messages (HTML escaped for XSS safety)
+- **Welcome message**: sends `[system] generate welcome message` on new conversations — AI generates greeting
+- **Session persistence**: identity + conversation_sid in `sessionStorage`. Restores on refresh, loads last 50 messages. Falls back to new conversation if expired.
+- **New conversation button**: refresh icon in header, clears session, reconnects fresh
 - **Theme files**: `themes/default.css` (blue), `themes/digishares.css` (navy/teal/Inter)
 - **Repo:** https://github.com/darthPeter/chat-bubble
 - **Live:** https://darthpeter.github.io/chat-bubble/demo.html
@@ -193,6 +197,9 @@ chat-bubble/
 12. ~~**Security hardening** — rate limiting, client key, message truncation, token TTL~~ ✅
 13. ~~**Theming system** — CSS custom properties, external theme files, DigiShares brand~~ ✅
 14. ~~**Chat UX polish** — smooth scroll, message animations, typing indicator~~ ✅
+15. ~~**Bot markdown rendering** — newlines, bold, italic in bot messages~~ ✅
+16. ~~**AI welcome message** — system message triggers greeting on new conversations~~ ✅
+17. ~~**Session persistence** — sessionStorage, message history restore, new conversation button~~ ✅
 
 ---
 

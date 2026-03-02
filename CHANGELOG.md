@@ -1,13 +1,15 @@
 # Changelog — Chat Bubble Widget
 
-## 2026-03-02 — Chat UX improvements
+## 2026-03-02 — Session persistence + new conversation
 
 ### Widget (widget.js)
-- **Smooth auto-scroll**: `scrollTo({ behavior: 'smooth' })` replaces instant `scrollTop` assignment
-- **Smart scroll**: only auto-scrolls if user is within 100px of bottom — won't interrupt reading history. Always scrolls for own messages.
-- **Message animations**: new messages slide up 12px + fade in (300ms ease-out)
-- **Typing indicator**: bouncing dots (bounce 4px + opacity pulse, 1.4s cycle). Shown automatically after user sends a message, hidden when bot reply arrives. Smooth 300ms opacity transition for show/hide.
-- `requestAnimationFrame` for proper scroll timing after DOM updates
+- **Session persistence**: identity + conversation_sid saved to `sessionStorage`. Page refresh restores session, loads last 50 messages from Twilio history. Falls back to new conversation if restore fails.
+- **New conversation button**: small refresh icon in header (next to close X). Clears session, resets identity, reconnects fresh.
+- **AI welcome message**: on new conversations, widget silently sends `[system] generate welcome message` — AI responds with a greeting. Skipped on session restore.
+- **Bot markdown rendering**: bot messages support `\n` (line breaks), `**bold**`, `*italic*`. HTML escaped for XSS safety. User messages stay plain text.
+- **Smooth auto-scroll**: `scrollTo({ behavior: 'smooth' })`, only auto-scrolls if user is near bottom (100px threshold)
+- **Message animations**: slide up 12px + fade in (300ms ease-out)
+- **Typing indicator**: bouncing dots (bounce 4px + opacity pulse). Shown after send, hidden on bot reply.
 
 ---
 
@@ -117,6 +119,7 @@
 ---
 
 ## TODO
-- Session persistence (sessionStorage for conversation ID across page refreshes)
-- "New conversation" button in chat header
+- ~~Session persistence~~ ✅ Done (sessionStorage, message history restore)
+- ~~"New conversation" button~~ ✅ Done (refresh icon in header)
 - ~~Update frontend bubble design~~ ✅ Done (theming system + DigiShares theme)
+- Update token endpoint to accept `conversation_sid` on refresh (reuse existing conversation)

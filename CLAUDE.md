@@ -34,6 +34,9 @@ n8n Workflows:
 - **Not SaaS**: each deployment is independent, no multi-tenancy
 - **Separation of concerns**: chat bubble = reusable transport layer, client project = AI brain with knowledge base. Message Handler forwards to external client webhook instead of containing AI directly
 - **Smart scroll**: auto-scrolls only when user is near bottom (100px threshold); always scrolls for own messages. Typing indicator shown after send, hidden on bot reply.
+- **Session persistence**: identity + conversation_sid in `sessionStorage`. Restores on refresh, loads message history. New conversation button resets.
+- **Welcome message**: widget sends `[system] generate welcome message` on new conversations — AI generates greeting. Skipped on session restore.
+- **Bot markdown**: lightweight formatter renders `\n`, `**bold**`, `*italic*` in bot messages. HTML escaped first for XSS safety.
 
 ## Repo & Hosting
 
