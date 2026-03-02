@@ -34,10 +34,31 @@
     });
   }
 
+  // ── Session persistence ────────────────────────────────────────────
+  const SESSION_KEY = "cb_session";
+
+  function loadSession() {
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+  }
+
+  function saveSession(id, convSid) {
+    try {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ identity: id, conversation_sid: convSid }));
+    } catch {}
+  }
+
+  function clearSession() {
+    try { sessionStorage.removeItem(SESSION_KEY); } catch {}
+  }
+
   // ── State ──────────────────────────────────────────────────────────
   let twilioClient = null;
   let activeConversation = null;
-  let identity = "user_" + crypto.randomUUID();
+  const saved = loadSession();
+  let identity = saved?.identity || "user_" + crypto.randomUUID();
   let isOpen = false;
 
   // ── Shadow DOM host ────────────────────────────────────────────────
@@ -134,11 +155,13 @@
     }
     .cb-header-title{font-size:15px;font-weight:600;flex:1}
     .cb-header-status{font-size:11px;opacity:.8;margin-top:2px}
-    .cb-close{
+    .cb-new,.cb-close{
       background:none;border:none;color:inherit;cursor:pointer;
       padding:4px;border-radius:6px;display:flex;align-self:flex-start;
     }
-    .cb-close:hover{background:rgba(255,255,255,.15)}
+    .cb-new:hover,.cb-close:hover{background:rgba(255,255,255,.15)}
+    .cb-new svg{width:16px;height:16px;opacity:.7}
+    .cb-new:hover svg{opacity:1}
     .cb-close svg{width:20px;height:20px}
 
     /* ── Messages ─────────────────────────────────────────── */
@@ -305,6 +328,11 @@
           <div class="cb-header-title">${CFG.title}</div>
           <div class="cb-header-status">Online</div>
         </div>
+        <button class="cb-new" aria-label="New conversation" title="New conversation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+          </svg>
+        </button>
         <button class="cb-close" aria-label="Close chat">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
@@ -338,6 +366,7 @@
   const btnToggle = shadow.querySelector(".cb-btn");
   const chatWindow = shadow.querySelector(".cb-window");
   const btnClose = shadow.querySelector(".cb-close");
+  const btnNew = shadow.querySelector(".cb-new");
   const messagesEl = shadow.querySelector(".cb-messages");
   const typingEl = shadow.querySelector(".cb-typing");
   const inputEl = shadow.querySelector(".cb-input");
@@ -458,15 +487,32 @@
     setStatus("Connecting to chat...");
 
     try {
-      // 1. Fetch token from n8n endpoint
+      // 1. Fetch token — reuse existing session or create new
+      const existingSession = loadSession();
+      const isRestore = !!(existingSession?.conversation_sid);
+      const reqBody = {
+        identity,
+        client_key: CFG.clientKey || undefined,
+      };
+      if (isRestore) {
+        reqBody.refresh = true;
+        reqBody.conversation_sid = existingSession.conversation_sid;
+      }
+
       const resp = await fetch(CFG.webhook, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identity, client_key: CFG.clientKey || undefined }),
+        body: JSON.stringify(reqBody),
       });
 
       if (!resp.ok) {
         const errData = await resp.json().catch(() => null);
+        // If restore fails (conversation expired), start fresh
+        if (isRestore) {
+          clearSession();
+          identity = "user_" + crypto.randomUUID();
+          return connectTwilio();
+        }
         throw new Error(errData?.error || `Token request failed (${resp.status})`);
       }
       const data = await resp.json();
@@ -475,6 +521,9 @@
       if (!token || !conversation_sid) {
         throw new Error("Invalid token response");
       }
+
+      // Save session for persistence across refreshes
+      saveSession(identity, conversation_sid);
 
       // 2. Load Twilio SDK and init client
       const TwilioConversations = await loadTwilioSDK();
@@ -489,6 +538,21 @@
       } catch {
         activeConversation =
           await twilioClient.getConversationBySid(conversation_sid);
+      }
+
+      // 3b. Restore previous messages if resuming session
+      if (isRestore) {
+        try {
+          const paginator = await activeConversation.getMessages(50);
+          paginator.items.forEach((msg) => {
+            if (msg.body && msg.body !== "[system] generate welcome message") {
+              appendMessage(msg.body, msg.author === identity ? "user" : "bot");
+            }
+          });
+          scrollToBottom("instant");
+        } catch (e) {
+          console.warn("[ChatBubble] Could not load history:", e);
+        }
       }
 
       // 4. Listen for incoming messages
@@ -548,13 +612,15 @@
       setStatus("");
       setHeaderStatus("Online");
 
-      // 8. Trigger welcome message from AI
-      try {
-        showTyping(true);
-        await activeConversation.sendMessage("[system] generate welcome message");
-      } catch (e) {
-        console.warn("[ChatBubble] Welcome message failed:", e);
-        showTyping(false);
+      // 8. Trigger welcome message from AI (new conversations only)
+      if (!isRestore) {
+        try {
+          showTyping(true);
+          await activeConversation.sendMessage("[system] generate welcome message");
+        } catch (e) {
+          console.warn("[ChatBubble] Welcome message failed:", e);
+          showTyping(false);
+        }
       }
     } catch (err) {
       console.error("[ChatBubble] Connection error:", err);
@@ -565,9 +631,26 @@
     }
   }
 
+  // ── New conversation ─────────────────────────────────────────────
+  async function newConversation() {
+    clearSession();
+    identity = "user_" + crypto.randomUUID();
+    if (twilioClient) {
+      try { await twilioClient.shutdown(); } catch {}
+    }
+    twilioClient = null;
+    activeConversation = null;
+    // Clear messages
+    messagesEl.querySelectorAll(".cb-msg").forEach((el) => el.remove());
+    showTyping(false);
+    setStatus("");
+    connectTwilio();
+  }
+
   // ── Event listeners ────────────────────────────────────────────────
   btnToggle.addEventListener("click", toggleChat);
   btnClose.addEventListener("click", toggleChat);
+  btnNew.addEventListener("click", newConversation);
 
   btnSend.addEventListener("click", sendMessage);
   inputEl.addEventListener("keydown", (e) => {
