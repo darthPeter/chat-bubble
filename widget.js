@@ -162,6 +162,8 @@
       background:var(--cb-msg-bot-bg);color:var(--cb-msg-bot-color);
       border:var(--cb-msg-bot-border);border-bottom-left-radius:4px;
     }
+    .cb-msg.bot strong{font-weight:600}
+    .cb-msg.bot em{font-style:italic}
     .cb-msg.user{
       align-self:flex-end;
       background:var(--cb-msg-user-bg);color:var(--cb-msg-user-color);
@@ -364,10 +366,32 @@
     }
   }
 
+  // ── Lightweight markdown for bot messages ───────────────────────────
+  function formatBotMessage(text) {
+    // Escape HTML to prevent XSS
+    const esc = text
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    return esc
+      // Bold: **text** or __text__
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/__(.+?)__/g, "<strong>$1</strong>")
+      // Italic: *text* or _text_ (but not inside words)
+      .replace(/(?<!\w)\*(.+?)\*(?!\w)/g, "<em>$1</em>")
+      .replace(/(?<!\w)_(.+?)_(?!\w)/g, "<em>$1</em>")
+      // Newlines to <br>
+      .replace(/\n/g, "<br>");
+  }
+
   function appendMessage(text, sender) {
     const el = document.createElement("div");
     el.className = `cb-msg ${sender}`;
-    el.textContent = text;
+    if (sender === "bot") {
+      el.innerHTML = formatBotMessage(text);
+    } else {
+      el.textContent = text;
+    }
     messagesEl.insertBefore(el, typingEl);
     // Always scroll for own messages; only scroll for bot if user is near bottom
     if (sender === "user" || isNearBottom()) {
