@@ -153,7 +153,8 @@
       width:36px;height:36px;border-radius:50%;object-fit:cover;
       background:rgba(255,255,255,.2);flex-shrink:0;
     }
-    .cb-header-title{font-size:15px;font-weight:600;flex:1}
+    .cb-header-info{flex:1;min-width:0}
+    .cb-header-title{font-size:15px;font-weight:600}
     .cb-header-status{font-size:11px;opacity:.8;margin-top:2px}
     .cb-new,.cb-close{
       background:none;border:none;color:inherit;cursor:pointer;
@@ -324,7 +325,7 @@
     <div class="cb-window">
       <div class="cb-header">
         ${CFG.logo ? `<img class="cb-header-avatar" src="${CFG.logo}" alt="">` : ""}
-        <div>
+        <div class="cb-header-info">
           <div class="cb-header-title">${CFG.title}</div>
           <div class="cb-header-status">Online</div>
         </div>
