@@ -239,8 +239,8 @@
 
     /* ── Connection banner ────────────────────────────────── */
     .cb-status-banner{
-      padding:8px 16px;font-size:12px;text-align:center;
-      background:#fef3c7;color:#92400e;display:none;flex-shrink:0;
+      padding:4px 16px;font-size:11px;text-align:center;
+      background:transparent;color:#bbb;display:none;flex-shrink:0;
     }
     .cb-status-banner.error{background:#fee2e2;color:#991b1b}
     .cb-status-banner.visible{display:block}
