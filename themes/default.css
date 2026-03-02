@@ -1,0 +1,52 @@
+/* @font-url: none */
+
+:host {
+  /* Colors */
+  --cb-color-primary: #2196F3;
+  --cb-color-primary-hover: #1e88e5;
+  --cb-color-on-primary: #fff;
+  --cb-color-surface: #fff;
+  --cb-color-surface-alt: #f7f8fa;
+  --cb-color-border: #e5e7eb;
+  --cb-color-text: #1a1a1a;
+  --cb-color-text-secondary: #666;
+
+  /* Floating button */
+  --cb-btn-size: 60px;
+  --cb-btn-size-mobile: 54px;
+  --cb-btn-radius: 50%;
+  --cb-btn-shadow: 0 4px 12px rgba(0,0,0,.25);
+  --cb-btn-shadow-hover: 0 6px 20px rgba(0,0,0,.3);
+
+  /* Window */
+  --cb-window-radius: 16px;
+  --cb-window-shadow: 0 8px 30px rgba(0,0,0,.18);
+  --cb-window-width: 380px;
+  --cb-window-height: 520px;
+
+  /* Header */
+  --cb-header-bg: var(--cb-color-primary);
+  --cb-header-color: #fff;
+  --cb-header-padding: 14px 16px;
+
+  /* Messages */
+  --cb-msg-radius: 14px;
+  --cb-msg-bot-bg: #fff;
+  --cb-msg-bot-color: var(--cb-color-text);
+  --cb-msg-bot-border: 1px solid var(--cb-color-border);
+  --cb-msg-user-bg: var(--cb-color-primary);
+  --cb-msg-user-color: #fff;
+
+  /* Input */
+  --cb-input-radius: 20px;
+  --cb-input-border: #ddd;
+  --cb-input-focus-border: var(--cb-color-primary);
+
+  /* Send button */
+  --cb-send-bg: var(--cb-color-primary);
+  --cb-send-color: #fff;
+
+  /* Typography */
+  --cb-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --cb-font-size: 14px;
+}

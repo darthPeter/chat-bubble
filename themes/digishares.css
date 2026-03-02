@@ -1,0 +1,53 @@
+/* @font-url: https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap */
+
+:host {
+  /* Colors — DigiShares brand */
+  --cb-color-primary: #002D6B;
+  --cb-color-primary-hover: #003d8f;
+  --cb-color-on-primary: #fff;
+  --cb-color-accent: #2BCECE;
+  --cb-color-surface: #fff;
+  --cb-color-surface-alt: #f0f4f8;
+  --cb-color-border: #d1d9e6;
+  --cb-color-text: #1a1a2e;
+  --cb-color-text-secondary: #4a5568;
+
+  /* Floating button */
+  --cb-btn-size: 60px;
+  --cb-btn-size-mobile: 54px;
+  --cb-btn-radius: 50%;
+  --cb-btn-shadow: 0 4px 16px rgba(0,45,107,.35);
+  --cb-btn-shadow-hover: 0 6px 24px rgba(0,45,107,.45);
+
+  /* Window */
+  --cb-window-radius: 16px;
+  --cb-window-shadow: 0 10px 40px rgba(0,16,39,.22);
+  --cb-window-width: 380px;
+  --cb-window-height: 520px;
+
+  /* Header — navy gradient */
+  --cb-header-bg: linear-gradient(135deg, #002D6B, #001027);
+  --cb-header-color: #fff;
+  --cb-header-padding: 16px 18px;
+
+  /* Messages */
+  --cb-msg-radius: 14px;
+  --cb-msg-bot-bg: #fff;
+  --cb-msg-bot-color: var(--cb-color-text);
+  --cb-msg-bot-border: 1px solid var(--cb-color-border);
+  --cb-msg-user-bg: #002D6B;
+  --cb-msg-user-color: #fff;
+
+  /* Input */
+  --cb-input-radius: 22px;
+  --cb-input-border: #d1d9e6;
+  --cb-input-focus-border: #2BCECE;
+
+  /* Send button — teal accent */
+  --cb-send-bg: #2BCECE;
+  --cb-send-color: #fff;
+
+  /* Typography */
+  --cb-font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --cb-font-size: 14px;
+}

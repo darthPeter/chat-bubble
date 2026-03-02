@@ -5,11 +5,17 @@
   const scriptTag = document.currentScript;
   const CFG = {
     webhook: scriptTag.getAttribute("data-webhook") || "",
-    color: scriptTag.getAttribute("data-color") || "#2C3E50",
+    color: scriptTag.getAttribute("data-color") || "",
     title: scriptTag.getAttribute("data-title") || "Chat",
     logo: scriptTag.getAttribute("data-logo") || "",
     clientKey: scriptTag.getAttribute("data-client-key") || "",
+    theme: scriptTag.getAttribute("data-theme") || "",
   };
+
+  // ── Compute base URL for loading theme files ─────────────────────
+  const baseURL = scriptTag.src
+    ? scriptTag.src.substring(0, scriptTag.src.lastIndexOf("/"))
+    : ".";
 
   // ── Twilio SDK loader ──────────────────────────────────────────────
   const TWILIO_SDK_URL =
@@ -40,36 +46,76 @@
   document.body.appendChild(host);
   const shadow = host.attachShadow({ mode: "closed" });
 
-  // ── Styles ─────────────────────────────────────────────────────────
+  // ── Structural styles (layout, positioning, transitions) ──────────
   const styles = document.createElement("style");
   styles.textContent = /* css */ `
+    :host {
+      /* Fallback values — used when no theme is loaded */
+      --cb-color-primary: #2C3E50;
+      --cb-color-primary-hover: #243342;
+      --cb-color-on-primary: #fff;
+      --cb-color-surface: #fff;
+      --cb-color-surface-alt: #f7f8fa;
+      --cb-color-border: #e5e7eb;
+      --cb-color-text: #1a1a1a;
+      --cb-color-text-secondary: #666;
+      --cb-btn-size: 60px;
+      --cb-btn-size-mobile: 54px;
+      --cb-btn-radius: 50%;
+      --cb-btn-shadow: 0 4px 12px rgba(0,0,0,.25);
+      --cb-btn-shadow-hover: 0 6px 20px rgba(0,0,0,.3);
+      --cb-window-radius: 16px;
+      --cb-window-shadow: 0 8px 30px rgba(0,0,0,.18);
+      --cb-window-width: 380px;
+      --cb-window-height: 520px;
+      --cb-header-bg: var(--cb-color-primary);
+      --cb-header-color: #fff;
+      --cb-header-padding: 14px 16px;
+      --cb-msg-radius: 14px;
+      --cb-msg-bot-bg: #fff;
+      --cb-msg-bot-color: var(--cb-color-text);
+      --cb-msg-bot-border: 1px solid var(--cb-color-border);
+      --cb-msg-user-bg: var(--cb-color-primary);
+      --cb-msg-user-color: #fff;
+      --cb-input-radius: 20px;
+      --cb-input-border: #ddd;
+      --cb-input-focus-border: var(--cb-color-primary);
+      --cb-send-bg: var(--cb-color-primary);
+      --cb-send-color: #fff;
+      --cb-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --cb-font-size: 14px;
+    }
+
     *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
 
     /* ── Floating button ─────────────────────────────────── */
     .cb-btn{
       position:fixed;bottom:24px;right:24px;z-index:2147483646;
-      width:60px;height:60px;border-radius:50%;border:none;
-      background:${CFG.color};color:#fff;cursor:pointer;
-      display:flex;align-items:center;justify-content:center;
-      box-shadow:0 4px 12px rgba(0,0,0,.25);
+      width:var(--cb-btn-size);height:var(--cb-btn-size);
+      border-radius:var(--cb-btn-radius);border:none;
+      background:var(--cb-color-primary);color:var(--cb-color-on-primary);
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      box-shadow:var(--cb-btn-shadow);
       transition:transform .2s,box-shadow .2s;
     }
-    .cb-btn:hover{transform:scale(1.08);box-shadow:0 6px 20px rgba(0,0,0,.3)}
+    .cb-btn:hover{transform:scale(1.08);box-shadow:var(--cb-btn-shadow-hover)}
     .cb-btn svg{width:28px;height:28px;transition:transform .2s}
     .cb-btn.open svg{transform:rotate(90deg)}
 
     /* ── Chat window ─────────────────────────────────────── */
     .cb-window{
       position:fixed;bottom:100px;right:24px;z-index:2147483646;
-      width:380px;max-width:calc(100vw - 32px);height:520px;max-height:calc(100vh - 120px);
-      border-radius:16px;overflow:hidden;
+      width:var(--cb-window-width);max-width:calc(100vw - 32px);
+      height:var(--cb-window-height);max-height:calc(100vh - 120px);
+      border-radius:var(--cb-window-radius);overflow:hidden;
       display:flex;flex-direction:column;
-      background:#fff;
-      box-shadow:0 8px 30px rgba(0,0,0,.18);
+      background:var(--cb-color-surface);
+      box-shadow:var(--cb-window-shadow);
       opacity:0;transform:translateY(16px) scale(.96);
       transition:opacity .25s ease,transform .25s ease;
       pointer-events:none;
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+      font-family:var(--cb-font-family);
+      font-size:var(--cb-font-size);
     }
     .cb-window.visible{
       opacity:1;transform:translateY(0) scale(1);pointer-events:auto;
@@ -78,8 +124,8 @@
     /* ── Header ──────────────────────────────────────────── */
     .cb-header{
       display:flex;align-items:center;gap:10px;
-      padding:14px 16px;
-      background:${CFG.color};color:#fff;
+      padding:var(--cb-header-padding);
+      background:var(--cb-header-bg);color:var(--cb-header-color);
       flex-shrink:0;
     }
     .cb-header-avatar{
@@ -89,7 +135,7 @@
     .cb-header-title{font-size:15px;font-weight:600;flex:1}
     .cb-header-status{font-size:11px;opacity:.8;margin-top:2px}
     .cb-close{
-      background:none;border:none;color:#fff;cursor:pointer;
+      background:none;border:none;color:inherit;cursor:pointer;
       padding:4px;border-radius:6px;display:flex;
     }
     .cb-close:hover{background:rgba(255,255,255,.15)}
@@ -99,26 +145,30 @@
     .cb-messages{
       flex:1;overflow-y:auto;padding:16px;
       display:flex;flex-direction:column;gap:8px;
-      background:#f7f8fa;
+      background:var(--cb-color-surface-alt);
     }
     .cb-msg{
-      max-width:80%;padding:10px 14px;border-radius:14px;
-      font-size:14px;line-height:1.45;word-wrap:break-word;
+      max-width:80%;padding:10px 14px;
+      border-radius:var(--cb-msg-radius);
+      font-size:var(--cb-font-size);line-height:1.45;word-wrap:break-word;
     }
     .cb-msg.bot{
-      align-self:flex-start;background:#fff;color:#1a1a1a;
-      border:1px solid #e5e7eb;border-bottom-left-radius:4px;
+      align-self:flex-start;
+      background:var(--cb-msg-bot-bg);color:var(--cb-msg-bot-color);
+      border:var(--cb-msg-bot-border);border-bottom-left-radius:4px;
     }
     .cb-msg.user{
-      align-self:flex-end;background:${CFG.color};color:#fff;
+      align-self:flex-end;
+      background:var(--cb-msg-user-bg);color:var(--cb-msg-user-color);
       border-bottom-right-radius:4px;
     }
 
     /* ── Typing indicator ────────────────────────────────── */
     .cb-typing{
       align-self:flex-start;padding:10px 14px;
-      background:#fff;border:1px solid #e5e7eb;border-radius:14px;
-      border-bottom-left-radius:4px;display:none;
+      background:var(--cb-msg-bot-bg);border:var(--cb-msg-bot-border);
+      border-radius:var(--cb-msg-radius);border-bottom-left-radius:4px;
+      display:none;
     }
     .cb-typing.active{display:flex;gap:4px;align-items:center}
     .cb-typing-dot{
@@ -132,20 +182,22 @@
     /* ── Input area ──────────────────────────────────────── */
     .cb-input-area{
       display:flex;align-items:center;gap:8px;
-      padding:12px 14px;border-top:1px solid #e5e7eb;
-      background:#fff;flex-shrink:0;
+      padding:12px 14px;border-top:1px solid var(--cb-color-border);
+      background:var(--cb-color-surface);flex-shrink:0;
     }
     .cb-input{
-      flex:1;border:1px solid #ddd;border-radius:20px;
-      padding:10px 16px;font-size:14px;outline:none;resize:none;
+      flex:1;border:1px solid var(--cb-input-border);
+      border-radius:var(--cb-input-radius);
+      padding:10px 16px;font-size:var(--cb-font-size);outline:none;resize:none;
       font-family:inherit;line-height:1.4;max-height:100px;
+      color:var(--cb-color-text);
     }
-    .cb-input:focus{border-color:${CFG.color}}
+    .cb-input:focus{border-color:var(--cb-input-focus-border)}
     .cb-send{
       width:38px;height:38px;border-radius:50%;border:none;
-      background:${CFG.color};color:#fff;cursor:pointer;
-      display:flex;align-items:center;justify-content:center;flex-shrink:0;
-      transition:opacity .15s;
+      background:var(--cb-send-bg);color:var(--cb-send-color);
+      cursor:pointer;display:flex;align-items:center;justify-content:center;
+      flex-shrink:0;transition:opacity .15s;
     }
     .cb-send:disabled{opacity:.4;cursor:default}
     .cb-send svg{width:18px;height:18px}
@@ -170,10 +222,59 @@
         width:100%;max-width:100%;height:100%;max-height:100%;
         border-radius:0;
       }
-      .cb-btn{bottom:16px;right:16px;width:54px;height:54px}
+      .cb-btn{bottom:16px;right:16px;
+        width:var(--cb-btn-size-mobile);height:var(--cb-btn-size-mobile);
+      }
     }
   `;
   shadow.appendChild(styles);
+
+  // ── Theme loader ──────────────────────────────────────────────────
+  function loadTheme(themeName) {
+    if (!themeName) return;
+    const url = baseURL + "/themes/" + themeName + ".css";
+    fetch(url)
+      .then((r) => {
+        if (!r.ok) throw new Error("Theme not found: " + themeName);
+        return r.text();
+      })
+      .then((css) => {
+        // Extract font URL from comment: /* @font-url: <url> */
+        const fontMatch = css.match(/@font-url:\s*(.+)\s*\*/);
+        if (fontMatch && fontMatch[1].trim() !== "none") {
+          const fontURL = fontMatch[1].trim();
+          if (!document.querySelector(`link[href="${fontURL}"]`)) {
+            const link = document.createElement("link");
+            link.rel = "stylesheet";
+            link.href = fontURL;
+            document.head.appendChild(link);
+          }
+        }
+        // Inject theme CSS into shadow DOM (after structural styles)
+        const themeStyle = document.createElement("style");
+        themeStyle.textContent = css;
+        shadow.insertBefore(themeStyle, styles.nextSibling);
+      })
+      .catch((err) => {
+        console.warn("[ChatBubble] " + err.message);
+      });
+  }
+
+  // ── Apply data-color override (highest priority) ──────────────────
+  if (CFG.color) {
+    const colorOverride = document.createElement("style");
+    colorOverride.textContent = `:host {
+      --cb-color-primary: ${CFG.color};
+      --cb-header-bg: ${CFG.color};
+      --cb-msg-user-bg: ${CFG.color};
+      --cb-send-bg: ${CFG.color};
+      --cb-input-focus-border: ${CFG.color};
+    }`;
+    shadow.appendChild(colorOverride);
+  }
+
+  // Load theme (inserted between structural and color override)
+  loadTheme(CFG.theme);
 
   // ── HTML structure ─────────────────────────────────────────────────
   const container = document.createElement("div");
