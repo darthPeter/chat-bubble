@@ -547,6 +547,15 @@
 
       setStatus("");
       setHeaderStatus("Online");
+
+      // 8. Trigger welcome message from AI
+      try {
+        showTyping(true);
+        await activeConversation.sendMessage("[system] generate welcome message");
+      } catch (e) {
+        console.warn("[ChatBubble] Welcome message failed:", e);
+        showTyping(false);
+      }
     } catch (err) {
       console.error("[ChatBubble] Connection error:", err);
       setHeaderStatus("Offline");
