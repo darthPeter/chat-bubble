@@ -123,7 +123,7 @@
 
     /* ── Header ──────────────────────────────────────────── */
     .cb-header{
-      display:flex;align-items:center;gap:10px;
+      display:flex;align-items:flex-start;gap:10px;
       padding:var(--cb-header-padding);
       background:var(--cb-header-bg);color:var(--cb-header-color);
       flex-shrink:0;
@@ -136,7 +136,7 @@
     .cb-header-status{font-size:11px;opacity:.8;margin-top:2px}
     .cb-close{
       background:none;border:none;color:inherit;cursor:pointer;
-      padding:4px;border-radius:6px;display:flex;
+      padding:4px;border-radius:6px;display:flex;align-self:flex-start;
     }
     .cb-close:hover{background:rgba(255,255,255,.15)}
     .cb-close svg{width:20px;height:20px}
