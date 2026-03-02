@@ -61,11 +61,12 @@ New client = new theme CSS file + new n8n workflow + new script tag. No widget c
 - **Themes**: `themes/default.css` (blue), `themes/digishares.css` (navy/teal/Inter)
 
 ### n8n — Token Endpoint (`ODrNXQASOPNObSWd`)
-10 nodes: `Webhook → Rate Limit & Validate → Is Valid? → (true) Create Conversation → Add Participant → Prepare JWT → HMAC Sign → Build Token Response → Return Token | (false) Reject 403`
+11 nodes: `Webhook → Rate Limit & Validate → Is Valid? → Is Refresh? → (yes) Prepare JWT | (no) Create Conversation → Add Participant → Prepare JWT → HMAC Sign → Build Token Response → Return Token | Is Valid? false → Reject 403`
 
 - Rate limiting: 10 conversations/IP/hour via `$getWorkflowStaticData('global')`
 - Client key validation: `CLIENT_KEY` constant (empty = disabled)
 - Token TTL: 1800s (30 min)
+- Session restore: `refresh: true` + `conversation_sid` skips creation, reuses existing conversation
 
 ### n8n — Message Handler (`wnHbfZ7Djko2G4HZ`)
 6 nodes: `Twilio Webhook → Is User Message? → Extract Message Data → Call AI Webhook → Prepare Reply → Send Reply to Twilio`
@@ -81,10 +82,11 @@ New client = new theme CSS file + new n8n workflow + new script tag. No widget c
 
 ### Session Init (user opens chat)
 1. Widget generates `user_<uuid>` identity (or restores from sessionStorage)
-2. POST to token endpoint with `{ identity, client_key }`
-3. n8n creates Twilio Conversation + participant, generates JWT
+2. POST to token endpoint with `{ identity, client_key }` (new) or `{ identity, refresh: true, conversation_sid }` (restore)
+3. n8n creates Twilio Conversation + participant (new), or skips creation (restore), generates JWT
 4. Widget receives `{ token, conversation_sid }`, connects WebSocket
 5. On new conversation: sends `[system] generate welcome message`
+6. On restore: loads last 50 messages from Twilio history
 
 ### Messaging
 1. User sends message via Twilio SDK (WebSocket)
@@ -127,5 +129,5 @@ New client = new theme CSS file + new n8n workflow + new script tag. No widget c
 
 ## TODO
 
-- Update token endpoint to accept `conversation_sid` on refresh (reuse existing conversation instead of creating new)
+- ~~Update token endpoint to accept `conversation_sid` on refresh~~ ✅ Done (Is Refresh? branch skips creation)
 - (Future) Live agent handoff: add human participant to Conversation, pause bot

@@ -1,5 +1,18 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-03-02 — Session restore across page refresh
+
+### Token Endpoint (`ODrNXQASOPNObSWd`) — now 11 nodes
+- Added **Is Refresh?** If node: branches between new conversation (create) and session restore (skip creation)
+- When `refresh: true` + `conversation_sid` is sent, skips Create Conversation + Add Participant, generates fresh JWT for existing conversation
+- **Rate Limit & Validate** updated to pass `isRefresh` and `existingConversationSid` downstream
+- **Prepare JWT** updated to read `conversation_sid` from webhook body on refresh, or from Create Conversation output on new
+
+### Widget (widget.js)
+- Fixed `tokenAboutToExpire` handler to also send `conversation_sid` (prevents JWT generation failure on token refresh)
+
+---
+
 ## 2026-03-02 — Session persistence + new conversation
 
 ### Widget (widget.js)
@@ -122,4 +135,4 @@
 - ~~Session persistence~~ ✅ Done (sessionStorage, message history restore)
 - ~~"New conversation" button~~ ✅ Done (refresh icon in header)
 - ~~Update frontend bubble design~~ ✅ Done (theming system + DigiShares theme)
-- Update token endpoint to accept `conversation_sid` on refresh (reuse existing conversation)
+- ~~Update token endpoint to accept `conversation_sid` on refresh~~ ✅ Done (Is Refresh? branch)

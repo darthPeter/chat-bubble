@@ -601,7 +601,7 @@
           const r = await fetch(CFG.webhook, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ identity, refresh: true, client_key: CFG.clientKey || undefined }),
+            body: JSON.stringify({ identity, refresh: true, conversation_sid, client_key: CFG.clientKey || undefined }),
           });
           const d = await r.json();
           await twilioClient.updateToken(d.token);

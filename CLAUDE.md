@@ -54,15 +54,18 @@ n8n Workflows:
 | Chat — Token Endpoint | `ODrNXQASOPNObSWd` | `/webhook/chat-token` | Active, security hardened ✅ |
 | Chat — Message Handler | `wnHbfZ7Djko2G4HZ` | `/webhook/chat-message` | Active, AI via client webhook ✅ |
 
-### Token Endpoint structure (10 nodes)
+### Token Endpoint structure (11 nodes)
 ```
 Chat Token Webhook → Rate Limit & Validate (Code) → Is Valid? (If)
-  → true: Create Conversation (HTTP) → Add Participant (HTTP) → Prepare JWT (Code) → HMAC Sign (Crypto) → Build Token Response (Code) → Return Token
+  → true: Is Refresh? (If)
+    → true (refresh):  Prepare JWT (Code) → HMAC Sign (Crypto) → Build Token Response (Code) → Return Token
+    → false (new):     Create Conversation (HTTP) → Add Participant (HTTP) → Prepare JWT → ...
   → false: Reject Request (Respond 403)
 ```
 - Rate limiting: 10 conversations/IP/hour via `$getWorkflowStaticData('global')`, token refreshes bypass
 - Client key: `CLIENT_KEY` constant in Rate Limit node — set per deployment, empty = skip validation
 - Token TTL: 1800s (30 min), widget handles refresh via `tokenAboutToExpire`
+- **Session restore**: when `refresh: true` + `conversation_sid` sent, skips conversation creation, generates fresh JWT for existing conversation
 
 ### Message Handler structure (6 nodes)
 ```
