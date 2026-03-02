@@ -120,8 +120,7 @@
       transition:transform .2s,box-shadow .2s;
     }
     .cb-btn:hover{transform:scale(1.08);box-shadow:var(--cb-btn-shadow-hover)}
-    .cb-btn svg{width:28px;height:28px;transition:transform .2s}
-    .cb-btn.open svg{transform:rotate(90deg)}
+    .cb-btn svg{width:28px;height:28px}
 
     /* ── Chat window ─────────────────────────────────────── */
     .cb-window{
@@ -260,6 +259,7 @@
       .cb-btn{bottom:16px;right:16px;
         width:var(--cb-btn-size-mobile);height:var(--cb-btn-size-mobile);
       }
+      .cb-input{font-size:16px}
     }
   `;
   shadow.appendChild(styles);
