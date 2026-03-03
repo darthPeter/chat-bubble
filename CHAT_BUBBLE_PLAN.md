@@ -130,4 +130,79 @@ New client = new theme CSS file + new n8n workflow + new script tag. No widget c
 ## TODO
 
 - ~~Update token endpoint to accept `conversation_sid` on refresh~~ ✅ Done (Is Refresh? branch skips creation)
+- Post-conversation webhook (see plan below)
 - (Future) Live agent handoff: add human participant to Conversation, pause bot
+
+---
+
+## Plan: Post-Conversation Webhook
+
+### Goal
+After a conversation goes idle (no messages for X minutes), automatically send the full transcript + metadata to a configurable webhook for post-conversation analysis (CSAT, lead extraction, contact updates, etc.).
+
+### Where conversation data lives
+All messages are stored in **Twilio Conversations cloud**. Each conversation has a `conversationSid`. Full history is always available via Twilio REST API:
+```
+GET /v1/Services/{ServiceSid}/Conversations/{ConversationSid}/Messages
+```
+
+### Approach: Twilio inactivity timer (server-side, reliable)
+
+Twilio Conversations has a built-in `timers.inactive` property. When set, Twilio automatically transitions the conversation state to `"inactive"` after the specified period of no new messages, and fires a webhook.
+
+### Implementation Steps
+
+#### Step 1: Set inactivity timer on conversation creation
+In Token Endpoint → Create Conversation node, add body parameter:
+```
+Timers.Inactive = PT5M    (5 minutes, ISO 8601 duration)
+```
+This tells Twilio: "if no messages for 5 minutes, mark conversation as inactive."
+
+#### Step 2: Add `onConversationStateUpdated` webhook to Twilio Service
+Configure the Twilio Conversations Service to fire a webhook when conversation state changes.
+Either via Twilio Console or API:
+```
+POST /v1/Services/{ServiceSid}/Configuration/Webhooks
+  PostWebhookUrl = https://n8n.srv1104100.hstgr.cloud/webhook/chat-conversation-ended
+  Filters = onConversationStateUpdated
+```
+Note: the existing `onMessageAdded` filter stays — add this as an additional filter.
+
+#### Step 3: New n8n workflow — "Chat — Post-Conversation Analysis"
+```
+Twilio Webhook (POST /webhook/chat-conversation-ended)
+  → Is Inactive? (If: StateFrom != "inactive" AND StateTo == "inactive")
+  → Fetch Transcript (HTTP: GET Twilio Messages API for this ConversationSid)
+  → Format Transcript (Code: build structured payload)
+  → Send to Analysis Webhook (HTTP: POST to client-specific analysis endpoint)
+```
+
+**Payload to analysis webhook:**
+```json
+{
+  "conversation_sid": "CHxxx...",
+  "started_at": "2026-03-03T10:00:00Z",
+  "ended_at": "2026-03-03T10:12:00Z",
+  "message_count": 8,
+  "transcript": [
+    { "author": "user_abc", "body": "Hi, I need help with...", "timestamp": "..." },
+    { "author": "bot", "body": "Sure! I can help...", "timestamp": "..." }
+  ]
+}
+```
+
+#### Step 4: Make analysis webhook configurable (reusability)
+Store the post-conversation webhook URL as a constant in the n8n workflow (like `CLIENT_KEY`), so each client deployment can point to a different analysis flow.
+
+### Why this approach
+- **Server-side**: works even if user closes browser/tab
+- **Native Twilio feature**: no custom timers or cron jobs needed
+- **Reliable**: Twilio guarantees the state transition webhook
+- **No widget changes**: entirely backend (n8n + Twilio config)
+- **Reusable**: each client can have their own analysis webhook
+
+### Configurable options
+- `Timers.Inactive` duration (default 5 min, adjustable per deployment)
+- Analysis webhook URL (per client)
+- Whether to include system messages in transcript (filter `[system] generate welcome message`)

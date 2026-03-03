@@ -136,3 +136,4 @@
 - ~~"New conversation" button~~ ✅ Done (refresh icon in header)
 - ~~Update frontend bubble design~~ ✅ Done (theming system + DigiShares theme)
 - ~~Update token endpoint to accept `conversation_sid` on refresh~~ ✅ Done (Is Refresh? branch)
+- Post-conversation webhook: send full transcript after inactivity timeout (planned, see CHAT_BUBBLE_PLAN.md)
