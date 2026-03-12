@@ -1,0 +1,51 @@
+:host {
+  /* Colors — Alkohol.cz brand */
+  --cb-color-primary: #8a7b3e;
+  --cb-color-primary-hover: #9e8f4a;
+  --cb-color-on-primary: #fff;
+  --cb-color-accent: #b79f6d;
+  --cb-color-surface: #fff;
+  --cb-color-surface-alt: #f5eddb;
+  --cb-color-border: #d9cfa8;
+  --cb-color-text: #333;
+  --cb-color-text-secondary: #666;
+
+  /* Floating button */
+  --cb-btn-size: 60px;
+  --cb-btn-size-mobile: 54px;
+  --cb-btn-radius: 50%;
+  --cb-btn-shadow: 0 4px 16px rgba(138,123,62,.35);
+  --cb-btn-shadow-hover: 0 6px 24px rgba(138,123,62,.45);
+
+  /* Window */
+  --cb-window-radius: 14px;
+  --cb-window-shadow: 0 10px 40px rgba(40,35,10,.22);
+  --cb-window-width: 380px;
+  --cb-window-height: 520px;
+
+  /* Header — dark olive gradient */
+  --cb-header-bg: linear-gradient(135deg, #8a7b3e, #5c5228);
+  --cb-header-color: #fff;
+  --cb-header-padding: 16px 18px;
+
+  /* Messages */
+  --cb-msg-radius: 14px;
+  --cb-msg-bot-bg: #fff;
+  --cb-msg-bot-color: var(--cb-color-text);
+  --cb-msg-bot-border: 1px solid var(--cb-color-border);
+  --cb-msg-user-bg: #8a7b3e;
+  --cb-msg-user-color: #fff;
+
+  /* Input */
+  --cb-input-radius: 22px;
+  --cb-input-border: #d9cfa8;
+  --cb-input-focus-border: #b79f6d;
+
+  /* Send button */
+  --cb-send-bg: #8a7b3e;
+  --cb-send-color: #fff;
+
+  /* Typography */
+  --cb-font-family: Arial, Helvetica, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --cb-font-size: 14px;
+}

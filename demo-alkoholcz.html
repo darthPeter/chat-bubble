@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alkohol.cz</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    /* Fallback if iframe is blocked by X-Frame-Options */
+    .fallback {
+      display: none;
+      position: absolute;
+      inset: 0;
+      background: #f5eddb;
+      font-family: Arial, Helvetica, sans-serif;
+      text-align: center;
+      padding-top: 40vh;
+      color: #5c5228;
+    }
+    .fallback h1 { color: #8a7b3e; margin-bottom: 8px; }
+    .fallback p { color: #666; }
+    iframe:not([src]) + .fallback,
+    .fallback.show { display: block; }
+  </style>
+</head>
+<body>
+  <iframe
+    src="https://www.alkohol.cz"
+    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+    loading="lazy"
+    onerror="document.querySelector('.fallback').classList.add('show')"
+  ></iframe>
+  <div class="fallback">
+    <h1>Alkohol.cz</h1>
+    <p>Iframe blocked by the site — chat widget still works in the corner.</p>
+  </div>
+
+  <!-- Chat Bubble Widget -->
+  <script
+    src="./widget.js"
+    data-webhook="https://n8n.srv1104100.hstgr.cloud/webhook/chat-token"
+    data-theme="alkoholcz"
+    data-title="Alkohol.cz"
+    data-client-key="23b9194f4746e6d23b5ac79704827779"
+    data-client-id="alkoholcz"
+  ></script>
+</body>
+</html>
