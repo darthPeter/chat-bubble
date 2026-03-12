@@ -27,7 +27,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst webhookData = $('Chat Token Webhook').first().json;\n\n// ── Client config table ────────────────────────────────────\nconst CLIENTS = {\n  digishares: { key: '__CLIENT_KEY_DIGISHARES__' },\n  // clientB: { key: '' },\n  // clientC: { key: '' },\n};\n\nconst clientId = webhookData.body?.client_id || 'digishares';\nconst clientConfig = CLIENTS[clientId];\n\nif (!clientConfig) {\n  return [{ json: { valid: false, error: 'Unknown client' } }];\n}\n\nconst clientKey = webhookData.body?.client_key || '';\nif (clientConfig.key && clientKey !== clientConfig.key) {\n  return [{ json: { valid: false, error: 'Invalid client key' } }];\n}\n\n// ── Rate limiting by IP ────────────────────────────────────\nconst MAX_CONVERSATIONS = 10;\nconst WINDOW_MS = 60 * 60 * 1000;\n\nconst forwarded = webhookData.headers?.['x-forwarded-for'] || '';\nconst ip = forwarded.split(',')[0].trim()\n         || webhookData.headers?.['x-real-ip']\n         || 'unknown';\nconst now = Date.now();\n\nif (!staticData.rateLimits) staticData.rateLimits = {};\n\nfor (const key of Object.keys(staticData.rateLimits)) {\n  if (now - staticData.rateLimits[key].firstRequest > WINDOW_MS) {\n    delete staticData.rateLimits[key];\n  }\n}\n\nconst isRefresh = webhookData.body?.refresh === true;\nconst existingConversationSid = webhookData.body?.conversation_sid || '';\n\nif (!isRefresh) {\n  const entry = staticData.rateLimits[ip] || { count: 0, firstRequest: now };\n  entry.count++;\n  if (entry.count === 1) entry.firstRequest = now;\n  staticData.rateLimits[ip] = entry;\n\n  if (entry.count > MAX_CONVERSATIONS) {\n    return [{ json: { valid: false, error: 'Too many requests. Try again later.' } }];\n  }\n}\n\nreturn [{ json: { valid: true, isRefresh, existingConversationSid, clientId } }];"
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst webhookData = $('Chat Token Webhook').first().json;\n\n// ── Client config table ────────────────────────────────────\nconst CLIENTS = {\n  digishares: { key: '__CLIENT_KEY_DIGISHARES__' },\n  alkoholcz:  { key: '__CLIENT_KEY_ALKOHOLCZ__' },\n};\n\nconst clientId = webhookData.body?.client_id || 'digishares';\nconst clientConfig = CLIENTS[clientId];\n\nif (!clientConfig) {\n  return [{ json: { valid: false, error: 'Unknown client' } }];\n}\n\nconst clientKey = webhookData.body?.client_key || '';\nif (clientConfig.key && clientKey !== clientConfig.key) {\n  return [{ json: { valid: false, error: 'Invalid client key' } }];\n}\n\n// ── Rate limiting by IP ────────────────────────────────────\nconst MAX_CONVERSATIONS = 10;\nconst WINDOW_MS = 60 * 60 * 1000;\n\nconst forwarded = webhookData.headers?.['x-forwarded-for'] || '';\nconst ip = forwarded.split(',')[0].trim()\n         || webhookData.headers?.['x-real-ip']\n         || 'unknown';\nconst now = Date.now();\n\nif (!staticData.rateLimits) staticData.rateLimits = {};\n\nfor (const key of Object.keys(staticData.rateLimits)) {\n  if (now - staticData.rateLimits[key].firstRequest > WINDOW_MS) {\n    delete staticData.rateLimits[key];\n  }\n}\n\nconst isRefresh = webhookData.body?.refresh === true;\nconst existingConversationSid = webhookData.body?.conversation_sid || '';\n\nif (!isRefresh) {\n  const entry = staticData.rateLimits[ip] || { count: 0, firstRequest: now };\n  entry.count++;\n  if (entry.count === 1) entry.firstRequest = now;\n  staticData.rateLimits[ip] = entry;\n\n  if (entry.count > MAX_CONVERSATIONS) {\n    return [{ json: { valid: false, error: 'Too many requests. Try again later.' } }];\n  }\n}\n\nreturn [{ json: { valid: true, isRefresh, existingConversationSid, clientId } }];"
       }
     },
     {
@@ -143,7 +143,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const ACCOUNT_SID    = '__ACCOUNT_SID__';\nconst API_KEY_SID    = '__API_KEY_SID__';\nconst SERVICE_SID    = '__SERVICE_SID__';\nconst TOKEN_TTL      = 1800;\n\nconst identity = $('Chat Token Webhook').first().json.body.identity;\n\nconst webhookBody = $('Chat Token Webhook').first().json.body;\nlet conversationSid;\nif (webhookBody.refresh && webhookBody.conversation_sid) {\n  conversationSid = webhookBody.conversation_sid;\n} else {\n  conversationSid = $('Create Conversation').first().json.sid;\n}\n\nfunction base64url(str) {\n  return btoa(str).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');\n}\n\nconst now = Math.floor(Date.now() / 1000);\n\nconst header = JSON.stringify({ typ: 'JWT', alg: 'HS256', cty: 'twilio-fpa;v=1' });\nconst payload = JSON.stringify({\n  jti: `${API_KEY_SID}-${now}`,\n  iss: API_KEY_SID,\n  sub: ACCOUNT_SID,\n  iat: now,\n  exp: now + TOKEN_TTL,\n  grants: {\n    identity: identity,\n    chat: { service_sid: SERVICE_SID },\n  },\n});\n\nconst headerB64 = base64url(header);\nconst payloadB64 = base64url(payload);\nconst unsignedToken = `${headerB64}.${payloadB64}`;\n\nreturn [{\n  json: { unsignedToken, conversationSid },\n}];"
+        "jsCode": "const ACCOUNT_SID    = '__ACCOUNT_SID__';\nconst API_KEY_SID    = '__API_KEY_SID__';\nconst SERVICE_SID    = '__SERVICE_SID__';\nconst TOKEN_TTL      = 1800;\n\nconst identity = $('Chat Token Webhook').first().json.body.identity;\n\nconst webhookBody = $('Chat Token Webhook').first().json.body;\nlet conversationSid;\nif (webhookBody.refresh && webhookBody.conversation_sid) {\n  conversationSid = webhookBody.conversation_sid;\n} else {\n  conversationSid = $('Create Conversation').first().json.sid;\n}\n\nfunction base64url(str) {\n  return btoa(str).replace(/\\\\+/g, '-').replace(/\\\\//g, '_').replace(/=+$/g, '');\n}\n\nconst now = Math.floor(Date.now() / 1000);\n\nconst header = JSON.stringify({ typ: 'JWT', alg: 'HS256', cty: 'twilio-fpa;v=1' });\nconst payload = JSON.stringify({\n  jti: `${API_KEY_SID}-${now}`,\n  iss: API_KEY_SID,\n  sub: ACCOUNT_SID,\n  iat: now,\n  exp: now + TOKEN_TTL,\n  grants: {\n    identity: identity,\n    chat: { service_sid: SERVICE_SID },\n  },\n});\n\nconst headerB64 = base64url(header);\nconst payloadB64 = base64url(payload);\nconst unsignedToken = `${headerB64}.${payloadB64}`;\n\nreturn [{\n  json: { unsignedToken, conversationSid },\n}];"
       }
     },
     {
@@ -171,7 +171,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "const unsignedToken = $('Prepare JWT').first().json.unsignedToken;\nconst conversationSid = $('Prepare JWT').first().json.conversationSid;\nconst hmacBase64 = $json.data;\n\nconst sig = hmacBase64.replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');\n\nconst token = `${unsignedToken}.${sig}`;\n\nreturn [{\n  json: { token, conversation_sid: conversationSid, region: 'ie1' },\n}];"
+        "jsCode": "const unsignedToken = $('Prepare JWT').first().json.unsignedToken;\nconst conversationSid = $('Prepare JWT').first().json.conversationSid;\nconst hmacBase64 = $json.data;\n\nconst sig = hmacBase64.replace(/\\\\+/g, '-').replace(/\\\\//g, '_').replace(/=+$/g, '');\n\nconst token = `${unsignedToken}.${sig}`;\n\nreturn [{\n  json: { token, conversation_sid: conversationSid, region: 'ie1' },\n}];"
       }
     },
     {
@@ -237,10 +237,11 @@
   },
   "_backup": {
     "date": "2026-03-12",
-    "version": "v2.0 — multi-client CLIENTS config table",
-    "n8n_version_counter": 72,
+    "version": "v3.0 — alkoholcz added to CLIENTS table",
+    "n8n_version_counter": 89,
     "redacted_placeholders": {
-      "__CLIENT_KEY_DIGISHARES__": "DigiShares client access key (Rate Limit & Validate node)",
+      "__CLIENT_KEY_DIGISHARES__": "DigiShares client access key",
+      "__CLIENT_KEY_ALKOHOLCZ__": "Alkohol.cz client access key",
       "__TWILIO_BASIC_AUTH__": "Basic auth header: base64(API_KEY_SID:API_KEY_SECRET)",
       "__TWILIO_API_SECRET__": "Twilio API Key Secret (HMAC Sign node)",
       "__ACCOUNT_SID__": "Twilio Account SID (Prepare JWT node)",

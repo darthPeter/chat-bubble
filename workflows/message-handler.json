@@ -86,7 +86,7 @@
       "typeVersion": 2,
       "position": [1440, 304],
       "parameters": {
-        "jsCode": "// ── Client routing table ───────────────────────────────────\n// Add new clients here. Each entry maps to an AI webhook.\nconst ROUTING = {\n  digishares: {\n    webhookUrl: '__AI_WEBHOOK_URL_DIGISHARES__',\n    authHeader: 'DigiSharesChatbot',\n  },\n  // clientB: {\n  //   webhookUrl: 'https://...',\n  //   authHeader: '',\n  // },\n};\n\n// Parse client_id from author identity: 'digishares_user_xxx' → 'digishares'\n// Backwards compat: 'user_xxx' (no prefix) → 'digishares'\nconst author = $json.author || '';\nconst clientId = author.includes('_user_')\n  ? author.split('_user_')[0]\n  : 'digishares';\n\nconst route = ROUTING[clientId];\n\nif (!route) {\n  return [];\n}\n\nreturn [{ json: { ...$json, clientId, webhookUrl: route.webhookUrl } }];"
+        "jsCode": "const ROUTING = {\n  digishares: {\n    webhookUrl: '__AI_WEBHOOK_URL_DIGISHARES__',\n    authToken: '__AI_AUTH_TOKEN_DIGISHARES__',\n  },\n  alkoholcz: {\n    webhookUrl: '__AI_WEBHOOK_URL_ALKOHOLCZ__',\n    authToken: '__AI_AUTH_TOKEN_ALKOHOLCZ__',\n  },\n};\n\nconst author = $json.author || '';\nconst clientId = author.includes('_user_')\n  ? author.split('_user_')[0]\n  : 'digishares';\n\nconst route = ROUTING[clientId];\n\nif (!route) {\n  return [];\n}\n\nreturn [{ json: { ...$json, clientId, webhookUrl: route.webhookUrl, authToken: route.authToken } }];"
       }
     },
     {
@@ -101,6 +101,7 @@
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
+        "specifyHeaders": "keypair",
         "headerParameters": {
           "parameters": [
             { "name": "Content-Type", "value": "application/json" }
@@ -202,14 +203,17 @@
   },
   "_backup": {
     "date": "2026-03-12",
-    "version": "v2.0 — multi-client routing + guardrails",
-    "n8n_version_counter": 28,
+    "version": "v3.0 — alkoholcz routing + per-client auth tokens in ROUTING table",
+    "n8n_version_counter": 42,
     "redacted_placeholders": {
-      "__AI_WEBHOOK_URL_DIGISHARES__": "DigiShares AI webhook URL (Route to Client node)",
-      "__CREDENTIAL_ID__": "n8n httpHeaderAuth credential ID",
-      "__CREDENTIAL_NAME__": "n8n httpHeaderAuth credential name",
+      "__AI_WEBHOOK_URL_DIGISHARES__": "DigiShares AI webhook URL",
+      "__AI_WEBHOOK_URL_ALKOHOLCZ__": "Alkohol.cz AI webhook URL",
+      "__AI_AUTH_TOKEN_DIGISHARES__": "DigiShares AI webhook auth token",
+      "__AI_AUTH_TOKEN_ALKOHOLCZ__": "Alkohol.cz AI webhook auth token",
       "__TWILIO_BASIC_AUTH__": "Basic auth header: base64(API_KEY_SID:API_KEY_SECRET)",
-      "__SERVICE_SID__": "Twilio Conversations Service SID (IE1)"
+      "__SERVICE_SID__": "Twilio Conversations Service SID (IE1)",
+      "__CREDENTIAL_ID__": "n8n httpHeaderAuth credential ID",
+      "__CREDENTIAL_NAME__": "n8n httpHeaderAuth credential name"
     }
   }
 }
