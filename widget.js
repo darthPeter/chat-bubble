@@ -194,6 +194,8 @@
     }
     .cb-msg.bot strong{font-weight:600}
     .cb-msg.bot em{font-style:italic}
+    .cb-msg.bot a{color:inherit;text-decoration:underline;word-break:break-all}
+    .cb-msg.bot a:hover{opacity:0.8}
     .cb-msg.user{
       align-self:flex-end;
       background:var(--cb-msg-user-bg);color:var(--cb-msg-user-color);
@@ -411,6 +413,8 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
     return esc
+      // URLs → clickable links (before other markdown to avoid mangling)
+      .replace(/https?:\/\/[^\s<)]+/g, '<a href="$&" target="_blank" rel="noopener">$&</a>')
       // Bold: **text** or __text__
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
       .replace(/__(.+?)__/g, "<strong>$1</strong>")

@@ -1,5 +1,15 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-03-12 — Clickable URLs in bot messages
+
+### Widget (widget.js)
+- URLs in bot messages (`http://` and `https://`) are now auto-linked as clickable `<a>` tags
+- Opens in new tab (`target="_blank"`, `rel="noopener"` for security)
+- XSS-safe: HTML escaped before URL detection
+- Link styling: inherits text color, underlined, `word-break:break-all` for long URLs
+
+---
+
 ## 2026-03-12 — Multi-client routing infrastructure
 
 ### Widget (widget.js)

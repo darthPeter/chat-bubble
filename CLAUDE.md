@@ -35,7 +35,7 @@ n8n Workflows:
 - **Smart scroll**: auto-scrolls only when user is near bottom (100px threshold); always scrolls for own messages. Typing indicator shown after send, hidden on bot reply.
 - **Session persistence**: identity + conversation_sid in `sessionStorage` (namespaced by client_id). Restores on refresh, loads message history. New conversation button resets.
 - **Welcome message**: widget sends `[system] generate welcome message` on new conversations — AI generates greeting. Skipped on session restore.
-- **Bot markdown**: lightweight formatter renders `\n`, `**bold**`, `*italic*` in bot messages. HTML escaped first for XSS safety.
+- **Bot markdown**: lightweight formatter renders `\n`, `**bold**`, `*italic*`, and clickable URLs in bot messages. HTML escaped first for XSS safety.
 
 ## Repo & Hosting
 
