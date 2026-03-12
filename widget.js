@@ -414,7 +414,11 @@
       .replace(/>/g, "&gt;");
     return esc
       // URLs → clickable links (before other markdown to avoid mangling)
-      .replace(/https?:\/\/[^\s<)]+/g, '<a href="$&" target="_blank" rel="noopener">$&</a>')
+      // Strip trailing markdown chars (*_~`) and punctuation that aren't part of the URL
+      .replace(/https?:\/\/[^\s<)]+/g, (url) => {
+        const clean = url.replace(/[\*_~`]+$/, '').replace(/[.,;:!?)]+$/, '');
+        return `<a href="${clean}" target="_blank" rel="noopener">${clean}</a>` + url.slice(clean.length);
+      })
       // Bold: **text** or __text__
       .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
       .replace(/__(.+?)__/g, "<strong>$1</strong>")
