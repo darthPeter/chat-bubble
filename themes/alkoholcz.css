@@ -10,12 +10,14 @@
   --cb-color-text: #333;
   --cb-color-text-secondary: #666;
 
-  /* Floating button */
-  --cb-btn-size: 56px;
-  --cb-btn-size-mobile: 50px;
-  --cb-btn-radius: 12px;
-  --cb-btn-shadow: 0 4px 16px rgba(181,161,66,.4);
-  --cb-btn-shadow-hover: 0 6px 24px rgba(181,161,66,.5);
+  /* Floating button — darker gold for icon contrast */
+  --cb-color-primary: #8a7a2e;
+  --cb-color-primary-hover: #9e8c38;
+  --cb-btn-size: 64px;
+  --cb-btn-size-mobile: 58px;
+  --cb-btn-radius: 14px;
+  --cb-btn-shadow: 0 4px 16px rgba(100,90,30,.5);
+  --cb-btn-shadow-hover: 0 6px 24px rgba(100,90,30,.6);
 
   /* Window */
   --cb-window-radius: 14px;
@@ -50,12 +52,12 @@
   --cb-font-size: 14px;
 }
 
-/* Position override — sit on top of alkohol.cz's original chat bubble */
+/* Position override — fully cover alkohol.cz's original chat bubble */
 .cb-btn {
-  bottom: 12px !important;
-  right: 12px !important;
+  bottom: 8px !important;
+  right: 8px !important;
 }
 .cb-window {
-  bottom: 80px !important;
-  right: 12px !important;
+  bottom: 84px !important;
+  right: 8px !important;
 }
