@@ -181,6 +181,28 @@ After a conversation goes idle (no messages for X minutes), send the full transc
 
 Twilio Conversations has built-in `timers.inactive`. When set, Twilio transitions conversation state to `"inactive"` and fires a webhook. Server-side, reliable, no custom timers.
 
+### Twilio `onConversationStateUpdated` Webhook Payload
+
+Twilio POSTs form-urlencoded data with these fields (verified 2026-03-13):
+
+| Field | Example | Notes |
+|---|---|---|
+| `AccountSid` | `ACxxxx...` | Twilio account |
+| `ConversationSid` | `CHxxxx...` | Conversation that changed state |
+| `ChatServiceSid` | `ISxxxx...` | Conversations Service SID |
+| `FriendlyName` | `chat_alkoholcz_user_abc_1234` | Name set on creation — used to parse `client_id` |
+| `UniqueName` | *(may be null)* | Only if explicitly set |
+| `State` | `inactive` | New state: `active` / `inactive` / `closed` |
+| `Attributes` | `{}` | Custom JSON metadata |
+| `DateCreated` | ISO timestamp | When conversation was created |
+| `DateUpdated` | ISO timestamp | When state changed |
+| `EventType` | `onConversationStateUpdated` | Event identifier |
+
+**Important:** The payload does NOT include message transcript. The workflow must fetch messages separately via:
+```
+GET /v1/Services/{ServiceSid}/Conversations/{ConversationSid}/Messages
+```
+
 ### Implementation
 
 1. **Set inactivity timer** on conversation creation in Token Endpoint:
@@ -192,14 +214,15 @@ Twilio Conversations has built-in `timers.inactive`. When set, Twilio transition
 
 3. **New n8n workflow** — "Chat — Post-Conversation Analysis":
    ```
-   Twilio Webhook → Is Inactive? (If) → Fetch Conversation Details (HTTP) → Parse Client ID (Code)
+   Twilio Webhook → Is Inactive? (If) → Parse Client ID from FriendlyName (Code)
      → Fetch Transcript (HTTP) → Format (Code) → Route to Client Analysis (Code) → Send to Analysis Webhook (HTTP)
    ```
+   - No need to fetch conversation details separately — `FriendlyName` is already in the webhook payload
+   - Check `State === 'inactive'` to filter out other state changes
 
-4. **Client identification** — parse `client_id` from conversation FriendlyName:
+4. **Client identification** — parse `client_id` from `FriendlyName` in webhook payload (no extra API call needed):
    - Token Endpoint sets FriendlyName: `chat_{identity}_{timestamp}` (e.g., `chat_alkoholcz_user_abc_1234`)
-   - Post-conversation workflow fetches conversation details via Twilio API
-   - Parses `client_id` from FriendlyName using same prefix logic as Message Handler
+   - Parse directly: `FriendlyName.split('chat_')[1]` → extract prefix before `_user_`
    - Backwards compat: `chat_user_xxx` (no client prefix) → `digishares`
 
 5. **Payload to analysis webhook:**
@@ -235,7 +258,7 @@ Twilio Conversations has built-in `timers.inactive`. When set, Twilio transition
 - [x] **Message guardrails** — prompt injection, jailbreak, abuse filtering (deployed 2026-03-12)
 - [ ] **New client onboarding** — theme + test page + routing for 2 new clients
 - [ ] **Post-conversation webhook** — Twilio inactivity timer + transcript workflow + per-client analysis routing
-  - [ ] Verify how `onConversationStateUpdated` fires (does Twilio send conversationSid? FriendlyName?)
+  - [x] Verify `onConversationStateUpdated` payload — confirmed: sends `ConversationSid`, `FriendlyName`, `State` (2026-03-13)
   - [ ] Set `Timers.Inactive` on Create Conversation in Token Endpoint
   - [ ] Add `onConversationStateUpdated` to Twilio Service webhook filters
   - [ ] Build "Chat — Post-Conversation Analysis" workflow with client routing
