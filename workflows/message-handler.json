@@ -1,0 +1,149 @@
+{
+  "name": "Chat — Message Handler",
+  "id": "wnHbfZ7Djko2G4HZ",
+  "active": true,
+  "nodes": [
+    {
+      "id": "b1b2c3d4-1111-1111-1111-111111111111",
+      "name": "Twilio Message Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [240, 304],
+      "webhookId": "chat-message-id",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat-message",
+        "options": {}
+      }
+    },
+    {
+      "id": "b1b2c3d4-2222-2222-2222-222222222222",
+      "name": "Is User Message?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [480, 304],
+      "parameters": {
+        "conditions": {
+          "options": { "version": 2, "leftValue": "", "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "filter-author",
+              "leftValue": "={{ $json.body.Author }}",
+              "rightValue": "bot",
+              "operator": { "type": "string", "operation": "notEquals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "code-extract",
+      "name": "Extract Message Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [720, 304],
+      "parameters": {
+        "jsCode": "const { body } = $input.first().json;\n\nlet messageBody = body?.Body || '';\n\n// Truncate messages over 2000 characters to prevent AI token abuse\nconst MAX_LENGTH = 2000;\nif (messageBody.length > MAX_LENGTH) {\n  messageBody = messageBody.substring(0, MAX_LENGTH);\n}\n\nreturn [{\n  json: {\n    conversationSid: body?.ConversationSid || '',\n    messageBody,\n    author: body?.Author || '',\n    messageSid: body?.MessageSid || '',\n    accountSid: body?.AccountSid || '',\n    eventType: body?.EventType || '',\n  },\n}];"
+      }
+    },
+    {
+      "id": "http-ai-webhook",
+      "name": "Call AI Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [960, 304],
+      "parameters": {
+        "method": "POST",
+        "url": "__AI_WEBHOOK_URL__",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"conversationSid\": \"{{ $json.conversationSid }}\",\n  \"message\": \"{{ $json.messageBody }}\",\n  \"author\": \"{{ $json.author }}\",\n  \"messageSid\": \"{{ $json.messageSid }}\"\n}",
+        "options": { "timeout": 30000 }
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "__CREDENTIAL_ID__",
+          "name": "__CREDENTIAL_NAME__"
+        }
+      }
+    },
+    {
+      "id": "code-prepare-reply",
+      "name": "Prepare Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 304],
+      "parameters": {
+        "jsCode": "const aiResponse = $json;\nconst conversationSid = $('Extract Message Data').first().json.conversationSid;\n\n// The client AI webhook should return a reply field\n// Supports: { reply: '...' } or { message: '...' } or { output: '...' } or plain text\nlet botReply = aiResponse.reply || aiResponse.message || aiResponse.output || aiResponse.text || '';\n\n// If response is a string at top level, use it directly\nif (!botReply && typeof aiResponse === 'string') {\n  botReply = aiResponse;\n}\n\nif (!botReply) {\n  botReply = 'Sorry, I could not generate a response.';\n}\n\nreturn [{\n  json: { conversationSid, botReply },\n}];"
+      }
+    },
+    {
+      "id": "http-reply-1",
+      "name": "Send Reply to Twilio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1440, 304],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://conversations.dublin.ie1.twilio.com/v1/Services/__SERVICE_SID__/Conversations/{{ $json.conversationSid }}/Messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "__TWILIO_BASIC_AUTH__" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            { "name": "Author", "value": "bot" },
+            { "name": "Body", "value": "={{ $json.botReply }}" }
+          ]
+        },
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Twilio Message Webhook": {
+      "main": [[{ "node": "Is User Message?", "type": "main", "index": 0 }]]
+    },
+    "Is User Message?": {
+      "main": [[{ "node": "Extract Message Data", "type": "main", "index": 0 }]]
+    },
+    "Extract Message Data": {
+      "main": [[{ "node": "Call AI Webhook", "type": "main", "index": 0 }]]
+    },
+    "Call AI Webhook": {
+      "main": [[{ "node": "Prepare Reply", "type": "main", "index": 0 }]]
+    },
+    "Prepare Reply": {
+      "main": [[{ "node": "Send Reply to Twilio", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "_backup": {
+    "date": "2026-03-12",
+    "version": "v1.0 — baseline before multi-client",
+    "n8n_version_counter": 26,
+    "redacted_placeholders": {
+      "__AI_WEBHOOK_URL__": "Client-specific AI webhook URL (Call AI Webhook node)",
+      "__CREDENTIAL_ID__": "n8n httpHeaderAuth credential ID",
+      "__CREDENTIAL_NAME__": "n8n httpHeaderAuth credential name",
+      "__TWILIO_BASIC_AUTH__": "Basic auth header: base64(API_KEY_SID:API_KEY_SECRET)",
+      "__SERVICE_SID__": "Twilio Conversations Service SID (IE1)"
+    }
+  }
+}

@@ -1,0 +1,251 @@
+{
+  "name": "Chat — Token Endpoint",
+  "id": "ODrNXQASOPNObSWd",
+  "active": true,
+  "nodes": [
+    {
+      "id": "wh-1",
+      "name": "Chat Token Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [200, 300],
+      "webhookId": "chat-token-id",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat-token",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "code-rl",
+      "name": "Rate Limit & Validate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst webhookData = $('Chat Token Webhook').first().json;\n\n// ── Client key validation ──────────────────────────────────\n// Set CLIENT_KEY per deployment. Leave empty to skip validation.\nconst CLIENT_KEY = '__CLIENT_KEY__';\nconst clientKey = webhookData.body?.client_key || '';\n\nif (CLIENT_KEY && clientKey !== CLIENT_KEY) {\n  return [{ json: { valid: false, error: 'Invalid client key' } }];\n}\n\n// ── Rate limiting by IP ────────────────────────────────────\nconst MAX_CONVERSATIONS = 10;\nconst WINDOW_MS = 60 * 60 * 1000; // 1 hour\n\nconst forwarded = webhookData.headers?.['x-forwarded-for'] || '';\nconst ip = forwarded.split(',')[0].trim()\n         || webhookData.headers?.['x-real-ip']\n         || 'unknown';\nconst now = Date.now();\n\nif (!staticData.rateLimits) staticData.rateLimits = {};\n\n// Clean expired entries\nfor (const key of Object.keys(staticData.rateLimits)) {\n  if (now - staticData.rateLimits[key].firstRequest > WINDOW_MS) {\n    delete staticData.rateLimits[key];\n  }\n}\n\n// Check for token refresh with existing conversation\nconst isRefresh = webhookData.body?.refresh === true;\nconst existingConversationSid = webhookData.body?.conversation_sid || '';\n\nif (!isRefresh) {\n  const entry = staticData.rateLimits[ip] || { count: 0, firstRequest: now };\n  entry.count++;\n  if (entry.count === 1) entry.firstRequest = now;\n  staticData.rateLimits[ip] = entry;\n\n  if (entry.count > MAX_CONVERSATIONS) {\n    return [{ json: { valid: false, error: 'Too many requests. Try again later.' } }];\n  }\n}\n\nreturn [{ json: { valid: true, isRefresh, existingConversationSid } }];"
+      }
+    },
+    {
+      "id": "if-valid",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [640, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "version": 2, "leftValue": "", "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "check-valid",
+              "leftValue": "={{ $json.valid }}",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "if-refresh",
+      "name": "Is Refresh?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [860, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "version": 2, "leftValue": "", "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "check-refresh",
+              "leftValue": "={{ $json.isRefresh }}",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-1",
+      "name": "Create Conversation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1060, 520],
+      "parameters": {
+        "method": "POST",
+        "url": "https://conversations.dublin.ie1.twilio.com/v1/Services/__SERVICE_SID__/Conversations",
+        "authentication": "none",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "__TWILIO_BASIC_AUTH__" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "FriendlyName",
+              "value": "={{ 'chat_' + $('Chat Token Webhook').first().json.body.identity + '_' + Date.now() }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "http-2",
+      "name": "Add Participant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1280, 520],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://conversations.dublin.ie1.twilio.com/v1/Services/__SERVICE_SID__/Conversations/{{ $json.sid }}/Participants",
+        "authentication": "none",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "__TWILIO_BASIC_AUTH__" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "specifyBody": "keypair",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "Identity",
+              "value": "={{ $('Chat Token Webhook').first().json.body.identity }}"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "code-prep",
+      "name": "Prepare JWT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const ACCOUNT_SID    = '__ACCOUNT_SID__';\nconst API_KEY_SID    = '__API_KEY_SID__';\nconst SERVICE_SID    = '__SERVICE_SID__';\nconst TOKEN_TTL      = 1800; // 30 minutes\n\nconst identity = $('Chat Token Webhook').first().json.body.identity;\n\n// Get conversation SID: from existing session (refresh) or newly created\nconst webhookBody = $('Chat Token Webhook').first().json.body;\nlet conversationSid;\nif (webhookBody.refresh && webhookBody.conversation_sid) {\n  conversationSid = webhookBody.conversation_sid;\n} else {\n  conversationSid = $('Create Conversation').first().json.sid;\n}\n\nfunction base64url(str) {\n  return btoa(str).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');\n}\n\nconst now = Math.floor(Date.now() / 1000);\n\nconst header = JSON.stringify({ typ: 'JWT', alg: 'HS256', cty: 'twilio-fpa;v=1' });\nconst payload = JSON.stringify({\n  jti: `${API_KEY_SID}-${now}`,\n  iss: API_KEY_SID,\n  sub: ACCOUNT_SID,\n  iat: now,\n  exp: now + TOKEN_TTL,\n  grants: {\n    identity: identity,\n    chat: { service_sid: SERVICE_SID },\n  },\n});\n\nconst headerB64 = base64url(header);\nconst payloadB64 = base64url(payload);\nconst unsignedToken = `${headerB64}.${payloadB64}`;\n\nreturn [{\n  json: { unsignedToken, conversationSid },\n}];"
+      }
+    },
+    {
+      "id": "crypto-1",
+      "name": "HMAC Sign",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [1520, 300],
+      "parameters": {
+        "action": "hmac",
+        "type": "SHA256",
+        "binaryData": false,
+        "value": "={{ $json.unsignedToken }}",
+        "secret": "__TWILIO_API_SECRET__",
+        "encoding": "base64",
+        "dataPropertyName": "data"
+      }
+    },
+    {
+      "id": "code-build",
+      "name": "Build Token Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1740, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const unsignedToken = $('Prepare JWT').first().json.unsignedToken;\nconst conversationSid = $('Prepare JWT').first().json.conversationSid;\nconst hmacBase64 = $json.data;\n\n// Convert standard base64 to base64url\nconst sig = hmacBase64.replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');\n\nconst token = `${unsignedToken}.${sig}`;\n\nreturn [{\n  json: { token, conversation_sid: conversationSid, region: 'ie1' },\n}];"
+      }
+    },
+    {
+      "id": "resp-1",
+      "name": "Return Token",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1960, 300],
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {}
+      }
+    },
+    {
+      "id": "resp-reject",
+      "name": "Reject Request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [860, 520],
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": { "responseCode": 403 }
+      }
+    }
+  ],
+  "connections": {
+    "Chat Token Webhook": {
+      "main": [[{ "node": "Rate Limit & Validate", "type": "main", "index": 0 }]]
+    },
+    "Rate Limit & Validate": {
+      "main": [[{ "node": "Is Valid?", "type": "main", "index": 0 }]]
+    },
+    "Is Valid?": {
+      "main": [
+        [{ "node": "Is Refresh?", "type": "main", "index": 0 }],
+        [{ "node": "Reject Request", "type": "main", "index": 0 }]
+      ]
+    },
+    "Is Refresh?": {
+      "main": [
+        [{ "node": "Prepare JWT", "type": "main", "index": 0 }],
+        [{ "node": "Create Conversation", "type": "main", "index": 0 }]
+      ]
+    },
+    "Create Conversation": {
+      "main": [[{ "node": "Add Participant", "type": "main", "index": 0 }]]
+    },
+    "Add Participant": {
+      "main": [[{ "node": "Prepare JWT", "type": "main", "index": 0 }]]
+    },
+    "Prepare JWT": {
+      "main": [[{ "node": "HMAC Sign", "type": "main", "index": 0 }]]
+    },
+    "HMAC Sign": {
+      "main": [[{ "node": "Build Token Response", "type": "main", "index": 0 }]]
+    },
+    "Build Token Response": {
+      "main": [[{ "node": "Return Token", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "_backup": {
+    "date": "2026-03-12",
+    "version": "v1.0 — baseline before multi-client",
+    "n8n_version_counter": 71,
+    "redacted_placeholders": {
+      "__CLIENT_KEY__": "Client access key (Rate Limit & Validate node)",
+      "__TWILIO_BASIC_AUTH__": "Basic auth header: base64(API_KEY_SID:API_KEY_SECRET)",
+      "__TWILIO_API_SECRET__": "Twilio API Key Secret (HMAC Sign node)",
+      "__ACCOUNT_SID__": "Twilio Account SID (Prepare JWT node)",
+      "__API_KEY_SID__": "Twilio API Key SID (Prepare JWT node)",
+      "__SERVICE_SID__": "Twilio Conversations Service SID (IE1)"
+    }
+  }
+}

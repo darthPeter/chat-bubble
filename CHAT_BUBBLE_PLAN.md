@@ -1,208 +1,223 @@
-# Chat Bubble Widget — Project Plan
+# Chat Bubble — Plans & TODO
 
-## Project Goal
+## Multi-Client Architecture
 
-Build a reusable, embeddable chat bubble widget hosted on GitHub Pages.
-Any client website adds a single `<script>` tag to get a fully functional AI chat interface.
-Backend is n8n. Real-time messaging via Twilio Conversations SDK (WebSocket).
+### Problem
+
+Currently, the Token Endpoint has a single hardcoded `CLIENT_KEY` and the Message Handler has a single hardcoded AI webhook URL. Adding a new client means duplicating workflows. This doesn't scale and creates maintenance burden.
+
+### Solution: Shared Workflows with Client Routing
+
+One `widget.js`, one Token Endpoint, one Message Handler — with client config routing tables. Each client gets only: a theme CSS file, a test page, and entries in the routing config.
+
+### Widget Changes
+
+1. **New attribute** `data-client-id` (e.g., `"digishares"`, `"clientB"`) — identifies the client
+2. **Identity format** changes from `user_{uuid}` to `{clientId}_user_{uuid}` — carries client context through Twilio
+3. **Session storage key** namespaced: `cb_session_{clientId}` — prevents conflicts when test pages share GitHub Pages origin
+4. **Token request** sends `client_id` alongside `client_key` in POST body
+5. **Backwards compatibility**: identity without prefix (`user_xxx`) treated as `digishares` during migration
+
+### Token Endpoint Changes
+
+Replace single `CLIENT_KEY` constant with a **client config table** in the Rate Limit & Validate node:
+
+```javascript
+const CLIENTS = {
+  digishares: { key: '7a7434cd...' },
+  clientB:    { key: 'abc123...'   },
+  clientC:    { key: 'def456...'   },
+};
+
+// Parse client_id from request body (sent by widget)
+const clientId = webhookData.body?.client_id || '';
+const clientConfig = CLIENTS[clientId];
+
+if (!clientConfig) {
+  return [{ json: { valid: false, error: 'Unknown client' } }];
+}
+if (clientConfig.key && clientKey !== clientConfig.key) {
+  return [{ json: { valid: false, error: 'Invalid client key' } }];
+}
+```
+
+Everything else (conversation creation, JWT generation) stays identical — it's already generic.
+
+### Message Handler Changes
+
+Add a **routing Code node** between Extract Message Data and Call AI Webhook:
+
+```javascript
+const ROUTING = {
+  digishares: {
+    webhookUrl: 'https://n8n.../webhook/digishares-ai',
+    credential: 'DigiSharesChatbot',
+  },
+  clientB: {
+    webhookUrl: 'https://n8n.../webhook/clientB-ai',
+    credential: 'ClientBChatbot',
+  },
+};
+
+// Parse client_id from author identity: "digishares_user_xxx" → "digishares"
+const author = $json.author || '';
+const clientId = author.includes('_user_') ? author.split('_user_')[0] : 'digishares';
+const route = ROUTING[clientId];
+
+if (!route) {
+  return []; // Drop unknown client messages silently
+}
+```
+
+Call AI Webhook node uses `{{ $json.webhookUrl }}` as dynamic URL.
+
+### Per-Client Checklist
+
+For each new client, create/configure:
+- [ ] Theme CSS file: `themes/{clientId}.css`
+- [ ] Test page: `demo-{clientId}.html`
+- [ ] Client key: generate and add to Token Endpoint CLIENTS table
+- [ ] AI webhook: n8n workflow or external endpoint
+- [ ] Auth credential: httpHeaderAuth in n8n (if AI webhook needs auth)
+- [ ] Routing entry: add to Message Handler ROUTING table
+- [ ] Script tag for client website with all `data-*` attributes
+
+### Data Isolation
+
+| Layer | How | Risk |
+|---|---|---|
+| **Twilio** | Each conversation has unique `conversationSid`, messages never cross conversations | None |
+| **Identity** | `client_id` embedded in identity → baked into JWT (signed server-side) → Twilio enforces `author` field | Cannot forge after JWT issued |
+| **Routing** | Message Handler parses `client_id` from author → routes to correct AI webhook | Unknown client → dropped |
+| **Browser** | Session storage key namespaced by `client_id` | No cross-client state possible |
+| **Rate limiting** | IP-based, shared across clients (prevents abuse regardless of client) | By design |
+
+### Migration Plan (DigiShares Safety)
+
+1. Deploy widget changes with backwards compatibility: identity `user_xxx` (no prefix) → treated as `digishares`
+2. Update Token Endpoint: add CLIENTS table, keep existing key working
+3. Update Message Handler: add routing, default unknown → `digishares`
+4. Test new clients with their own test pages
+5. Update DigiShares script tag last (add `data-client-id="digishares"`)
+6. Remove backwards-compatibility fallback after all clients migrated
+
+### Future: Live Agent Handoff
+
+This architecture supports live agent cleanly:
+- Routing table can include per-client flags: `{ liveAgent: true, agentWebhook: '...' }`
+- Message Handler checks conversation state before routing (AI vs human agent)
+- Twilio Conversations natively supports adding human agent as participant
+- No architectural changes needed — extend routing logic only
 
 ---
 
-## Architecture
+## Message Guardrails
+
+### Goal
+
+Filter malicious, abusive, or jailbreak messages before they reach the AI webhook. Protects against prompt injection, rudeness, and abuse — best practice for any public-facing chatbot.
+
+### Where in the Flow
+
+Message Handler, between Extract Message Data and Call AI Webhook:
 
 ```
-Client Website
-  └─ <script src="https://darthpeter.github.io/chat-bubble/widget.js"
-             data-webhook="..." data-theme="digishares" data-title="...">
-        │
-        ├─ Renders chat bubble UI (bottom-right floating button)
-        ├─ Loads theme CSS from themes/{name}.css (CSS custom properties)
-        ├─ On open: calls n8n token endpoint → gets Twilio Access Token
-        ├─ Connects to Twilio Conversations via WebSocket (JS SDK)
-        └─ Sends/receives messages in real-time
-
-Twilio Conversations (cloud)
-  └─ onMessageAdded webhook → POST to n8n
-
-n8n Workflows:
-  1. Token endpoint: creates Conversation + User + returns Access Token
-  2. Message handler: receives Twilio webhook → forwards to client AI webhook → reply via Twilio API
-  3. (Future) Live agent: add human participant to Conversation, remove bot
+Extract Message Data → Guardrails (Code) → Is Safe? (If)
+  → true:  Call AI Webhook → ...
+  → false: Prepare Safe Reply (Code) → Send Reply to Twilio
 ```
 
----
+### What to Filter
 
-## Reusability Design
-
-One `widget.js`, configured entirely via script tag attributes:
-
-| Attribute | Required | Description |
+| Category | Examples | Detection |
 |---|---|---|
-| `data-webhook` | yes | n8n webhook URL for this client's token endpoint |
-| `data-theme` | optional | Theme name — loads `themes/{name}.css` |
-| `data-color` | optional | Primary color override (on top of theme) |
-| `data-title` | optional | Bot name in header (default: "Chat") |
-| `data-logo` | optional | Avatar image URL in header |
-| `data-client-key` | optional | Access key validated by n8n rate limiter |
+| **Prompt injection** | "Ignore previous instructions", "You are now...", "System prompt:" | Regex patterns for common injection phrases |
+| **Jailbreak attempts** | "DAN mode", "Pretend you have no rules", role-play escapes | Keyword + pattern matching |
+| **Abusive language** | Profanity, slurs, threats | Word list + pattern matching |
+| **Spam/flooding** | Repeated identical messages, gibberish | Rate check per conversation + entropy detection |
+| **Data extraction** | "What are your instructions?", "Show me the system prompt" | Pattern matching |
 
-New client = new theme CSS file + new n8n workflow + new script tag. No widget code changes.
+### Implementation
 
----
+A single Code node with categorized checks:
 
-## Current State
+```javascript
+const message = $json.messageBody.toLowerCase();
 
-### Frontend — widget.js (662 lines)
-- Shadow DOM (closed), no build step, Twilio SDK from CDN
-- **Theming**: CSS custom properties (`--cb-*`), external theme files, `data-color` override
-- **UX**: smooth auto-scroll (100px threshold), message slide-up animations, bouncing typing dots
-- **Bot markdown**: renders `\n`, `**bold**`, `*italic*` (HTML escaped for XSS safety)
-- **Welcome message**: sends `[system] generate welcome message` on new conversations
-- **Session persistence**: `sessionStorage`, restores last 50 messages, new conversation button
-- **Themes**: `themes/default.css` (blue), `themes/digishares.css` (navy/teal/Inter)
+// Prompt injection patterns
+const INJECTION_PATTERNS = [
+  /ignore\s+(all\s+)?(previous|prior|above)\s+(instructions|rules|prompts)/i,
+  /you\s+are\s+now\s+(a|an|the)/i,
+  /system\s*prompt/i,
+  /\bdan\s*mode\b/i,
+  /pretend\s+(you|that)\s+(have\s+no|don't\s+have|are\s+not\s+bound)/i,
+  /jailbreak/i,
+];
 
-### n8n — Token Endpoint (`ODrNXQASOPNObSWd`)
-11 nodes: `Webhook → Rate Limit & Validate → Is Valid? → Is Refresh? → (yes) Prepare JWT | (no) Create Conversation → Add Participant → Prepare JWT → HMAC Sign → Build Token Response → Return Token | Is Valid? false → Reject 403`
+// Check patterns, return { safe: boolean, reason: string }
+```
 
-- Rate limiting: 10 conversations/IP/hour via `$getWorkflowStaticData('global')`
-- Client key validation: `CLIENT_KEY` constant (empty = disabled)
-- Token TTL: 1800s (30 min)
-- Session restore: `refresh: true` + `conversation_sid` skips creation, reuses existing conversation
+### Safe Reply
 
-### n8n — Message Handler (`wnHbfZ7Djko2G4HZ`)
-6 nodes: `Twilio Webhook → Is User Message? → Extract Message Data → Call AI Webhook → Prepare Reply → Send Reply to Twilio`
+When a message is flagged, respond with a neutral message instead of forwarding to AI:
+- "I'm here to help with questions about [client topic]. How can I assist you?"
+- Varies per client (configurable in routing table)
 
-- Forwards to external client AI webhook (reusable transport layer)
-- Payload: `{ conversationSid, message, author, messageSid }`
-- Truncates messages over 2000 chars
-- Auth: httpHeaderAuth credential `DigiSharesChatbot`
+### Multi-Client
 
----
-
-## How It Works
-
-### Session Init (user opens chat)
-1. Widget generates `user_<uuid>` identity (or restores from sessionStorage)
-2. POST to token endpoint with `{ identity, client_key }` (new) or `{ identity, refresh: true, conversation_sid }` (restore)
-3. n8n creates Twilio Conversation + participant (new), or skips creation (restore), generates JWT
-4. Widget receives `{ token, conversation_sid }`, connects WebSocket
-5. On new conversation: sends `[system] generate welcome message`
-6. On restore: loads last 50 messages from Twilio history
-
-### Messaging
-1. User sends message via Twilio SDK (WebSocket)
-2. Twilio fires `onMessageAdded` webhook → n8n Message Handler
-3. n8n forwards to client AI webhook with `conversationSid` as session ID
-4. AI response sent back to Twilio conversation via REST API
-5. Widget receives bot reply instantly via WebSocket
-
-### Why Two Separate Workflows
-- **Token Endpoint**: called by browser, once per session, returns credentials
-- **Message Handler**: called by Twilio (server-to-server), every message, processes AI
+- Guardrails are shared across all clients (same Code node)
+- Safe reply message can be per-client (from ROUTING config)
+- Some clients may want stricter/looser filtering — add sensitivity level to ROUTING table
 
 ---
 
-## Security
+## Post-Conversation Webhook
 
-| Feature | Where | Details |
-|---|---|---|
-| Rate limit by IP | Token Endpoint | `$getWorkflowStaticData('global')`, max 10/IP/hour, refreshes bypass |
-| Client key | Token Endpoint + widget | `CLIENT_KEY` constant, `data-client-key` attribute |
-| Max message length | Message Handler | Truncates at 2000 chars before AI webhook |
-| Token TTL | Token Endpoint | 1800s (30 min), widget auto-refreshes |
-| Credentials server-side | n8n only | Twilio SID/Key/Secret never sent to browser |
-| Shadow DOM | widget.js | Closed mode — host page can't access internals |
-| CORS open | by design | Widget embeds on any domain; key + rate limit provide control |
+### Goal
 
----
+After a conversation goes idle (no messages for X minutes), send the full transcript + metadata to a configurable webhook for post-conversation analysis (CSAT, lead extraction, contact updates).
 
-## Credentials
+### Approach: Twilio Inactivity Timer
 
-| Value | Status |
-|---|---|
-| Twilio Account SID | Configured in n8n |
-| Twilio API Key SID + Secret | Configured in n8n |
-| Conversations Service SID (IE1) | Configured in n8n |
-| Regional endpoint | `conversations.dublin.ie1.twilio.com` |
-| DigiShares AI webhook auth | httpHeaderAuth credential in n8n |
+Twilio Conversations has built-in `timers.inactive`. When set, Twilio transitions conversation state to `"inactive"` and fires a webhook. Server-side, reliable, no custom timers.
+
+### Implementation
+
+1. **Set inactivity timer** on conversation creation in Token Endpoint:
+   ```
+   Timers.Inactive = PT5M  (5 minutes, ISO 8601)
+   ```
+
+2. **Add webhook filter** to Twilio Service: `onConversationStateUpdated` → new n8n endpoint
+
+3. **New n8n workflow** — "Chat — Post-Conversation Analysis":
+   ```
+   Twilio Webhook → Is Inactive? (If) → Fetch Transcript (HTTP) → Format (Code) → Send to Analysis Webhook (HTTP)
+   ```
+
+4. **Payload to analysis webhook:**
+   ```json
+   {
+     "conversation_sid": "CHxxx...",
+     "client_id": "digishares",
+     "started_at": "2026-03-03T10:00:00Z",
+     "ended_at": "2026-03-03T10:12:00Z",
+     "message_count": 8,
+     "transcript": [
+       { "author": "user_abc", "body": "Hi...", "timestamp": "..." },
+       { "author": "bot", "body": "Hello!...", "timestamp": "..." }
+     ]
+   }
+   ```
+
+5. **Multi-client**: analysis webhook URL in per-client routing config
 
 ---
 
 ## TODO
 
-- ~~Update token endpoint to accept `conversation_sid` on refresh~~ ✅ Done (Is Refresh? branch skips creation)
-- Post-conversation webhook (see plan below)
-- (Future) Live agent handoff: add human participant to Conversation, pause bot
-
----
-
-## Plan: Post-Conversation Webhook
-
-### Goal
-After a conversation goes idle (no messages for X minutes), automatically send the full transcript + metadata to a configurable webhook for post-conversation analysis (CSAT, lead extraction, contact updates, etc.).
-
-### Where conversation data lives
-All messages are stored in **Twilio Conversations cloud**. Each conversation has a `conversationSid`. Full history is always available via Twilio REST API:
-```
-GET /v1/Services/{ServiceSid}/Conversations/{ConversationSid}/Messages
-```
-
-### Approach: Twilio inactivity timer (server-side, reliable)
-
-Twilio Conversations has a built-in `timers.inactive` property. When set, Twilio automatically transitions the conversation state to `"inactive"` after the specified period of no new messages, and fires a webhook.
-
-### Implementation Steps
-
-#### Step 1: Set inactivity timer on conversation creation
-In Token Endpoint → Create Conversation node, add body parameter:
-```
-Timers.Inactive = PT5M    (5 minutes, ISO 8601 duration)
-```
-This tells Twilio: "if no messages for 5 minutes, mark conversation as inactive."
-
-#### Step 2: Add `onConversationStateUpdated` webhook to Twilio Service
-Configure the Twilio Conversations Service to fire a webhook when conversation state changes.
-Either via Twilio Console or API:
-```
-POST /v1/Services/{ServiceSid}/Configuration/Webhooks
-  PostWebhookUrl = https://n8n.srv1104100.hstgr.cloud/webhook/chat-conversation-ended
-  Filters = onConversationStateUpdated
-```
-Note: the existing `onMessageAdded` filter stays — add this as an additional filter.
-
-#### Step 3: New n8n workflow — "Chat — Post-Conversation Analysis"
-```
-Twilio Webhook (POST /webhook/chat-conversation-ended)
-  → Is Inactive? (If: StateFrom != "inactive" AND StateTo == "inactive")
-  → Fetch Transcript (HTTP: GET Twilio Messages API for this ConversationSid)
-  → Format Transcript (Code: build structured payload)
-  → Send to Analysis Webhook (HTTP: POST to client-specific analysis endpoint)
-```
-
-**Payload to analysis webhook:**
-```json
-{
-  "conversation_sid": "CHxxx...",
-  "started_at": "2026-03-03T10:00:00Z",
-  "ended_at": "2026-03-03T10:12:00Z",
-  "message_count": 8,
-  "transcript": [
-    { "author": "user_abc", "body": "Hi, I need help with...", "timestamp": "..." },
-    { "author": "bot", "body": "Sure! I can help...", "timestamp": "..." }
-  ]
-}
-```
-
-#### Step 4: Make analysis webhook configurable (reusability)
-Store the post-conversation webhook URL as a constant in the n8n workflow (like `CLIENT_KEY`), so each client deployment can point to a different analysis flow.
-
-### Why this approach
-- **Server-side**: works even if user closes browser/tab
-- **Native Twilio feature**: no custom timers or cron jobs needed
-- **Reliable**: Twilio guarantees the state transition webhook
-- **No widget changes**: entirely backend (n8n + Twilio config)
-- **Reusable**: each client can have their own analysis webhook
-
-### Configurable options
-- `Timers.Inactive` duration (default 5 min, adjustable per deployment)
-- Analysis webhook URL (per client)
-- Whether to include system messages in transcript (filter `[system] generate welcome message`)
+- [ ] **Multi-client architecture** — implement shared routing (see plan above)
+- [ ] **Message guardrails** — prompt injection, jailbreak, abuse filtering (see plan above)
+- [ ] **New client onboarding** — theme + test page + routing for 2 new clients
+- [ ] **Post-conversation webhook** — Twilio inactivity timer + transcript workflow
+- [ ] **(Future) Live agent handoff** — add human participant, pause bot routing

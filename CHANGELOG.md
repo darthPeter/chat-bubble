@@ -1,5 +1,24 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-03-12 — Project health & multi-client planning
+
+### Documentation
+- Rewrote `CLAUDE.md` — fixed stale node count (was "10", actual is 11), added workflow versioning process, added multi-client design decisions, consolidated file list
+- Rewrote `CHAT_BUBBLE_PLAN.md` — removed duplicate content (was overlapping with CLAUDE.md), added multi-client architecture plan with routing tables, data isolation analysis, migration plan
+- Synced parent `CLAUDE.md` with repo copy (was stale, missing Is Refresh? branch)
+
+### Workflow Versioning
+- Created `workflows/` directory with first-ever JSON backups
+- `workflows/token-endpoint.json` — Token Endpoint (11 nodes, v71)
+- `workflows/message-handler.json` — Message Handler (6 nodes, v26)
+- Secrets redacted as `__PLACEHOLDER__` values, metadata stripped
+- Added versioning process to CLAUDE.md
+
+### Repo
+- Added `.gitignore`
+
+---
+
 ## 2026-03-02 — Session restore across page refresh
 
 ### Token Endpoint (`ODrNXQASOPNObSWd`) — now 11 nodes
@@ -45,9 +64,6 @@
 - `themes/default.css` — original blue (#2196F3) look as CSS custom properties
 - `themes/digishares.css` — DigiShares brand: navy #002D6B, teal accent #2BCECE, Inter font, gradient header
 
-### Demo
-- `demo.html` now uses `data-theme="digishares"`
-
 ---
 
 ## 2026-03-02 — Security hardening
@@ -84,10 +100,6 @@
 - Prepare Reply: extracts AI response (supports `output`, `reply`, `message`, `text` keys)
 - Auth credential `DigiSharesChatbot` (httpHeaderAuth) added for client webhook
 
-### Issues Resolved
-- Client webhook 403 "Authorization data is wrong!" → added httpHeaderAuth credential
-- Client webhook returning `{ "message": "Workflow was started" }` → user switched to Respond to Webhook mode
-
 ---
 
 ## 2026-03-01 — End-to-end echo mode working
@@ -119,21 +131,3 @@
 - Conversations Service "N8N Chatbot" (IE1 region)
 - Service webhook configured: `onMessageAdded` → n8n Message Handler
 - API Key auth (Basic auth in HTTP Request headers)
-
-### Issues Resolved
-- `require('crypto')` blocked in n8n sandbox → used n8n Crypto node for HMAC
-- `fetch()` blocked in n8n sandbox → used HTTP Request nodes
-- `crypto.subtle` not available → used n8n Crypto node
-- Twilio 401 errors → discovered account is IE1 region, not US1
-- Wrong Service SID (US1 vs IE1) → corrected to IE1 SID
-- Widget "Could not connect" → Twilio SDK needed `{ region: 'ie1' }` option
-- No echo reply → Twilio Service webhook was not configured, set via API
-
----
-
-## TODO
-- ~~Session persistence~~ ✅ Done (sessionStorage, message history restore)
-- ~~"New conversation" button~~ ✅ Done (refresh icon in header)
-- ~~Update frontend bubble design~~ ✅ Done (theming system + DigiShares theme)
-- ~~Update token endpoint to accept `conversation_sid` on refresh~~ ✅ Done (Is Refresh? branch)
-- Post-conversation webhook: send full transcript after inactivity timeout (planned, see CHAT_BUBBLE_PLAN.md)
