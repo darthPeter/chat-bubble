@@ -72,11 +72,15 @@ Chat Token Webhook → Rate Limit & Validate (Code) → Is Valid? (If)
 - Token TTL: 1800s (30 min), widget handles refresh via `tokenAboutToExpire`
 - Session restore: `refresh: true` + `conversation_sid` skips conversation creation
 
-### Message Handler (6 nodes)
+### Message Handler (9 nodes)
 ```
-Twilio Webhook → Is User Message? (If) → Extract Message Data (Code) → Call AI Webhook (HTTP) → Prepare Reply (Code) → Send Reply to Twilio (HTTP)
+Twilio Webhook → Is User Message? (If) → Extract Message Data (Code) → Guardrails (Code) → Is Safe? (If)
+  → true:  Call AI Webhook (HTTP) → Prepare Reply (Code) → Send Reply to Twilio (HTTP)
+  → false: Prepare Safe Reply (Code) ────────────────────→ Send Reply to Twilio (HTTP)
 ```
 - If node filters Author != "bot" to prevent infinite reply loops
+- **Guardrails**: filters prompt injection, jailbreak, data extraction, abuse, code injection. System messages (`[system]`) pass through.
+- Flagged messages get a neutral safe reply without reaching the AI webhook
 - AI is external: routes to client-specific webhook URL
 - Client webhook receives: `{ conversationSid, message, author, messageSid }`
 - Client webhook returns: `{ output }` (also supports `reply`, `message`, `text` keys)

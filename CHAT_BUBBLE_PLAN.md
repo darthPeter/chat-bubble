@@ -217,7 +217,7 @@ Twilio Conversations has built-in `timers.inactive`. When set, Twilio transition
 ## TODO
 
 - [ ] **Multi-client architecture** — implement shared routing (see plan above)
-- [ ] **Message guardrails** — prompt injection, jailbreak, abuse filtering (see plan above)
+- [x] **Message guardrails** — prompt injection, jailbreak, abuse filtering (deployed 2026-03-12)
 - [ ] **New client onboarding** — theme + test page + routing for 2 new clients
 - [ ] **Post-conversation webhook** — Twilio inactivity timer + transcript workflow
 - [ ] **(Future) Live agent handoff** — add human participant, pause bot routing

@@ -1,5 +1,27 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-03-12 — Message guardrails
+
+### Message Handler (`wnHbfZ7Djko2G4HZ`) — now 9 nodes
+- Added **Guardrails** Code node after Extract Message Data — checks messages against 5 categories of patterns before forwarding to AI
+- Added **Is Safe?** If node — branches between safe (→ AI webhook) and flagged (→ safe reply)
+- Added **Prepare Safe Reply** Code node — returns neutral response for flagged messages
+- Both branches merge at existing Send Reply to Twilio node
+
+### Guardrail categories
+- **Prompt injection**: "ignore previous instructions", "you are now...", `[INST]`, `system:` markers
+- **Jailbreak**: DAN mode, developer mode, "pretend you have no rules", bypass requests
+- **Data extraction**: "what are your instructions", "show me the system prompt"
+- **Abuse & threats**: profanity directed at bot, threats of violence
+- **Code injection**: `<script>` tags, `javascript:` URIs, event handler attributes
+
+### Design
+- System messages (`[system] generate welcome message`) pass through guardrails untouched
+- Safe reply is neutral — doesn't reveal what was blocked: "I'm here to help you with your questions. Could you please rephrase your message?"
+- Pattern-based (regex), no external API calls — zero latency overhead
+
+---
+
 ## 2026-03-12 — Project health & multi-client planning
 
 ### Documentation

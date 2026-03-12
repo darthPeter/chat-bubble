@@ -49,11 +49,42 @@
       }
     },
     {
+      "id": "code-guardrails",
+      "name": "Guardrails",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [960, 304],
+      "parameters": {
+        "jsCode": "const message = $json.messageBody || '';\n\n// Pass through system messages (e.g., welcome message trigger)\nif (message.startsWith('[system]')) {\n  return [{ json: { ...$json, safe: true, reason: '' } }];\n}\n\n// ── Prompt Injection ──────────────────────────────────────\nconst INJECTION = [\n  /ignore\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions|rules|prompts|guidelines)/i,\n  /disregard\\s+(all\\s+)?(previous|prior|above|your)\\s+(instructions|rules|prompts)/i,\n  /forget\\s+(all\\s+)?(previous|prior|your)\\s+(instructions|rules|context|training)/i,\n  /new\\s+(instructions|rules|prompt|directive)\\s*:/i,\n  /override\\s+(previous|all|your)\\s+(instructions|rules|settings)/i,\n  /you\\s+are\\s+now\\s+(a|an|the|my)\\s/i,\n  /from\\s+now\\s+on\\s+(you|ignore|forget|act)/i,\n  /\\[system\\]|\\[INST\\]|<\\|im_start\\|/i,\n  /\\bsystem\\s*:\\s/i,\n];\n\n// ── Jailbreak ─────────────────────────────────────────────\nconst JAILBREAK = [\n  /\\bdan\\s*mode\\b/i,\n  /\\bjailbreak\\b/i,\n  /\\bdeveloper\\s*mode\\b/i,\n  /\\bgod\\s*mode\\b/i,\n  /pretend\\s+(you|that)\\s+(have\\s+no|don't\\s+have|are\\s+not\\s+bound|are\\s+free|can\\s+do\\s+anything)/i,\n  /act\\s+(as\\s+if|like)\\s+(you\\s+)?(have\\s+no|there\\s+are\\s+no)\\s+(rules|restrictions|limitations)/i,\n  /bypass\\s+(your|all|the|any)\\s+(restrictions|rules|filters|safety|guidelines)/i,\n  /enable\\s+(unrestricted|unfiltered|uncensored)\\b/i,\n];\n\n// ── Data Extraction ───────────────────────────────────────\nconst EXTRACTION = [\n  /what\\s+are\\s+your\\s+(instructions|rules|guidelines|system\\s*prompt)/i,\n  /(show|reveal|display|print|output|repeat|tell\\s+me)\\s+(me\\s+)?(your|the)\\s+(system\\s*prompt|instructions|initial\\s*prompt|original\\s*prompt)/i,\n  /what\\s+(were\\s+you|was\\s+your)\\s+(told|instructed|programmed|trained|configured)/i,\n];\n\n// ── Abuse & Threats ───────────────────────────────────────\nconst ABUSE = [\n  /\\b(fuck\\s*you|go\\s+fuck|motherfuck|piece\\s+of\\s+shit)\\b/i,\n  /\\b(kill\\s+(yourself|yourselves)|i('ll|\\s+will)\\s+(kill|hurt|harm|attack)\\s+you)\\b/i,\n];\n\n// ── Code Injection ────────────────────────────────────────\nconst CODE_INJECTION = [\n  /<script[\\s>]/i,\n  /javascript\\s*:/i,\n  /on(load|error|click|mouseover)\\s*=/i,\n];\n\n// Run all checks\nconst checks = [\n  { patterns: INJECTION, category: 'prompt_injection' },\n  { patterns: JAILBREAK, category: 'jailbreak' },\n  { patterns: EXTRACTION, category: 'data_extraction' },\n  { patterns: ABUSE, category: 'abuse' },\n  { patterns: CODE_INJECTION, category: 'code_injection' },\n];\n\nfor (const { patterns, category } of checks) {\n  for (const pattern of patterns) {\n    if (pattern.test(message)) {\n      return [{ json: { ...$json, safe: false, reason: category } }];\n    }\n  }\n}\n\nreturn [{ json: { ...$json, safe: true, reason: '' } }];"
+      }
+    },
+    {
+      "id": "if-safe",
+      "name": "Is Safe?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [1200, 304],
+      "parameters": {
+        "conditions": {
+          "options": { "version": 2, "leftValue": "", "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "check-safe",
+              "leftValue": "={{ $json.safe }}",
+              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
       "id": "http-ai-webhook",
       "name": "Call AI Webhook",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [960, 304],
+      "position": [1440, 304],
       "parameters": {
         "method": "POST",
         "url": "__AI_WEBHOOK_URL__",
@@ -82,9 +113,19 @@
       "name": "Prepare Reply",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, 304],
+      "position": [1680, 304],
       "parameters": {
         "jsCode": "const aiResponse = $json;\nconst conversationSid = $('Extract Message Data').first().json.conversationSid;\n\n// The client AI webhook should return a reply field\n// Supports: { reply: '...' } or { message: '...' } or { output: '...' } or plain text\nlet botReply = aiResponse.reply || aiResponse.message || aiResponse.output || aiResponse.text || '';\n\n// If response is a string at top level, use it directly\nif (!botReply && typeof aiResponse === 'string') {\n  botReply = aiResponse;\n}\n\nif (!botReply) {\n  botReply = 'Sorry, I could not generate a response.';\n}\n\nreturn [{\n  json: { conversationSid, botReply },\n}];"
+      }
+    },
+    {
+      "id": "code-safe-reply",
+      "name": "Prepare Safe Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1440, 520],
+      "parameters": {
+        "jsCode": "const conversationSid = $json.conversationSid;\nconst reason = $json.reason || 'policy';\n\nconst botReply = \"I'm here to help you with your questions. Could you please rephrase your message?\";\n\nreturn [{ json: { conversationSid, botReply } }];"
       }
     },
     {
@@ -92,7 +133,7 @@
       "name": "Send Reply to Twilio",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1440, 304],
+      "position": [1920, 400],
       "parameters": {
         "method": "POST",
         "url": "=https://conversations.dublin.ie1.twilio.com/v1/Services/__SERVICE_SID__/Conversations/{{ $json.conversationSid }}/Messages",
@@ -122,12 +163,24 @@
       "main": [[{ "node": "Extract Message Data", "type": "main", "index": 0 }]]
     },
     "Extract Message Data": {
-      "main": [[{ "node": "Call AI Webhook", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "Guardrails", "type": "main", "index": 0 }]]
+    },
+    "Guardrails": {
+      "main": [[{ "node": "Is Safe?", "type": "main", "index": 0 }]]
+    },
+    "Is Safe?": {
+      "main": [
+        [{ "node": "Call AI Webhook", "type": "main", "index": 0 }],
+        [{ "node": "Prepare Safe Reply", "type": "main", "index": 0 }]
+      ]
     },
     "Call AI Webhook": {
       "main": [[{ "node": "Prepare Reply", "type": "main", "index": 0 }]]
     },
     "Prepare Reply": {
+      "main": [[{ "node": "Send Reply to Twilio", "type": "main", "index": 0 }]]
+    },
+    "Prepare Safe Reply": {
       "main": [[{ "node": "Send Reply to Twilio", "type": "main", "index": 0 }]]
     }
   },
@@ -136,8 +189,8 @@
   },
   "_backup": {
     "date": "2026-03-12",
-    "version": "v1.0 — baseline before multi-client",
-    "n8n_version_counter": 26,
+    "version": "v1.1 — added guardrails (prompt injection, jailbreak, abuse, code injection filtering)",
+    "n8n_version_counter": 27,
     "redacted_placeholders": {
       "__AI_WEBHOOK_URL__": "Client-specific AI webhook URL (Call AI Webhook node)",
       "__CREDENTIAL_ID__": "n8n httpHeaderAuth credential ID",
