@@ -1,9 +1,9 @@
 :host {
-  /* Colors — Alkohol.cz brand */
-  --cb-color-primary: #8a7b3e;
-  --cb-color-primary-hover: #9e8f4a;
+  /* Colors — Alkohol.cz brand (warm gold from sidebar/nav) */
+  --cb-color-primary: #b5a142;
+  --cb-color-primary-hover: #c4af4e;
   --cb-color-on-primary: #fff;
-  --cb-color-accent: #b79f6d;
+  --cb-color-accent: #d4be5e;
   --cb-color-surface: #fff;
   --cb-color-surface-alt: #f5eddb;
   --cb-color-border: #d9cfa8;
@@ -11,11 +11,11 @@
   --cb-color-text-secondary: #666;
 
   /* Floating button */
-  --cb-btn-size: 60px;
-  --cb-btn-size-mobile: 54px;
-  --cb-btn-radius: 50%;
-  --cb-btn-shadow: 0 4px 16px rgba(138,123,62,.35);
-  --cb-btn-shadow-hover: 0 6px 24px rgba(138,123,62,.45);
+  --cb-btn-size: 56px;
+  --cb-btn-size-mobile: 50px;
+  --cb-btn-radius: 12px;
+  --cb-btn-shadow: 0 4px 16px rgba(181,161,66,.4);
+  --cb-btn-shadow-hover: 0 6px 24px rgba(181,161,66,.5);
 
   /* Window */
   --cb-window-radius: 14px;
@@ -23,8 +23,8 @@
   --cb-window-width: 380px;
   --cb-window-height: 520px;
 
-  /* Header — dark olive gradient */
-  --cb-header-bg: linear-gradient(135deg, #8a7b3e, #5c5228);
+  /* Header — warm gold gradient */
+  --cb-header-bg: linear-gradient(135deg, #b5a142, #7a6c2d);
   --cb-header-color: #fff;
   --cb-header-padding: 16px 18px;
 
@@ -33,19 +33,29 @@
   --cb-msg-bot-bg: #fff;
   --cb-msg-bot-color: var(--cb-color-text);
   --cb-msg-bot-border: 1px solid var(--cb-color-border);
-  --cb-msg-user-bg: #8a7b3e;
+  --cb-msg-user-bg: #b5a142;
   --cb-msg-user-color: #fff;
 
   /* Input */
   --cb-input-radius: 22px;
   --cb-input-border: #d9cfa8;
-  --cb-input-focus-border: #b79f6d;
+  --cb-input-focus-border: #d4be5e;
 
   /* Send button */
-  --cb-send-bg: #8a7b3e;
+  --cb-send-bg: #b5a142;
   --cb-send-color: #fff;
 
   /* Typography */
   --cb-font-family: Arial, Helvetica, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --cb-font-size: 14px;
+}
+
+/* Position override — sit on top of alkohol.cz's original chat bubble */
+.cb-btn {
+  bottom: 12px !important;
+  right: 12px !important;
+}
+.cb-window {
+  bottom: 80px !important;
+  right: 12px !important;
 }
