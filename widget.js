@@ -9,8 +9,15 @@
     title: scriptTag.getAttribute("data-title") || "Chat",
     logo: scriptTag.getAttribute("data-logo") || "",
     clientKey: scriptTag.getAttribute("data-client-key") || "",
+    clientId: scriptTag.getAttribute("data-client-id") || "",
     theme: scriptTag.getAttribute("data-theme") || "",
   };
+
+  // ── Identity helper (client-namespaced when client-id is set) ────
+  const generateIdentity = () =>
+    CFG.clientId
+      ? `${CFG.clientId}_user_${crypto.randomUUID()}`
+      : `user_${crypto.randomUUID()}`;
 
   // ── Compute base URL for loading theme files ─────────────────────
   const baseURL = scriptTag.src
@@ -35,7 +42,7 @@
   }
 
   // ── Session persistence ────────────────────────────────────────────
-  const SESSION_KEY = "cb_session";
+  const SESSION_KEY = CFG.clientId ? `cb_session_${CFG.clientId}` : "cb_session";
 
   function loadSession() {
     try {
@@ -58,7 +65,7 @@
   let twilioClient = null;
   let activeConversation = null;
   const saved = loadSession();
-  let identity = saved?.identity || "user_" + crypto.randomUUID();
+  let identity = saved?.identity || generateIdentity();
   let isOpen = false;
 
   // ── Shadow DOM host ────────────────────────────────────────────────
@@ -494,6 +501,7 @@
       const reqBody = {
         identity,
         client_key: CFG.clientKey || undefined,
+        client_id: CFG.clientId || undefined,
       };
       if (isRestore) {
         reqBody.refresh = true;
@@ -511,7 +519,7 @@
         // If restore fails (conversation expired), start fresh
         if (isRestore) {
           clearSession();
-          identity = "user_" + crypto.randomUUID();
+          identity = generateIdentity();
           return connectTwilio();
         }
         throw new Error(errData?.error || `Token request failed (${resp.status})`);
@@ -601,7 +609,7 @@
           const r = await fetch(CFG.webhook, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ identity, refresh: true, conversation_sid, client_key: CFG.clientKey || undefined }),
+            body: JSON.stringify({ identity, refresh: true, conversation_sid, client_key: CFG.clientKey || undefined, client_id: CFG.clientId || undefined }),
           });
           const d = await r.json();
           await twilioClient.updateToken(d.token);
@@ -635,7 +643,7 @@
   // ── New conversation ─────────────────────────────────────────────
   async function newConversation() {
     clearSession();
-    identity = "user_" + crypto.randomUUID();
+    identity = generateIdentity();
     if (twilioClient) {
       try { await twilioClient.shutdown(); } catch {}
     }

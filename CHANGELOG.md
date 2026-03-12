@@ -1,5 +1,30 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-03-12 — Multi-client routing infrastructure
+
+### Widget (widget.js)
+- Added `data-client-id` attribute support
+- Identity format: `{clientId}_user_{uuid}` when client-id is set, `user_{uuid}` when not (backwards compat)
+- Session storage key namespaced: `cb_session_{clientId}` — prevents cross-client conflicts on same origin
+- `client_id` sent in token request body (init + refresh)
+- Helper `generateIdentity()` used across all identity creation points
+
+### Token Endpoint (`ODrNXQASOPNObSWd`) — 11 nodes
+- Replaced single `CLIENT_KEY` constant with **`CLIENTS` config table** — validates key per client_id
+- `client_id` parsed from request body, defaults to `digishares` when missing (backwards compat)
+- Unknown client_id → reject 403 "Unknown client"
+- `clientId` passed downstream for logging/debugging
+
+### Message Handler (`wnHbfZ7Djko2G4HZ`) — now 10 nodes
+- Added **Route to Client** Code node (between Is Safe? and Call AI Webhook)
+- `ROUTING` config table maps client_id → AI webhook URL
+- Parses client_id from author identity prefix: `digishares_user_xxx` → `digishares`
+- Backwards compat: `user_xxx` (no prefix) → defaults to `digishares`
+- Unknown client → message dropped silently
+- Call AI Webhook now uses dynamic URL: `{{ $json.webhookUrl }}`
+
+---
+
 ## 2026-03-12 — Message guardrails
 
 ### Message Handler (`wnHbfZ7Djko2G4HZ`) — now 9 nodes

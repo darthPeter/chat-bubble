@@ -68,20 +68,21 @@ Chat Token Webhook → Rate Limit & Validate (Code) → Is Valid? (If)
   → false: Reject Request (Respond 403)
 ```
 - Rate limiting: 10 conversations/IP/hour via `$getWorkflowStaticData('global')`, token refreshes bypass
-- Client key: `CLIENT_KEY` constant in Rate Limit node — validated per client_id
+- Client validation: `CLIENTS` config table in Rate Limit node — validates key per `client_id` from request body. No `client_id` defaults to `digishares`.
 - Token TTL: 1800s (30 min), widget handles refresh via `tokenAboutToExpire`
 - Session restore: `refresh: true` + `conversation_sid` skips conversation creation
 
-### Message Handler (9 nodes)
+### Message Handler (10 nodes)
 ```
 Twilio Webhook → Is User Message? (If) → Extract Message Data (Code) → Guardrails (Code) → Is Safe? (If)
-  → true:  Call AI Webhook (HTTP) → Prepare Reply (Code) → Send Reply to Twilio (HTTP)
-  → false: Prepare Safe Reply (Code) ────────────────────→ Send Reply to Twilio (HTTP)
+  → true:  Route to Client (Code) → Call AI Webhook (HTTP) → Prepare Reply (Code) → Send Reply to Twilio (HTTP)
+  → false: Prepare Safe Reply (Code) ──────────────────────────────────────────────→ Send Reply to Twilio (HTTP)
 ```
 - If node filters Author != "bot" to prevent infinite reply loops
 - **Guardrails**: filters prompt injection, jailbreak, data extraction, abuse, code injection. System messages (`[system]`) pass through.
 - Flagged messages get a neutral safe reply without reaching the AI webhook
-- AI is external: routes to client-specific webhook URL
+- **Route to Client**: parses `client_id` from author identity prefix (`digishares_user_xxx` → `digishares`), looks up webhook URL from `ROUTING` config table. Backwards compat: `user_xxx` (no prefix) → `digishares`.
+- Call AI Webhook uses dynamic URL from routing: `{{ $json.webhookUrl }}`
 - Client webhook receives: `{ conversationSid, message, author, messageSid }`
 - Client webhook returns: `{ output }` (also supports `reply`, `message`, `text` keys)
 - `conversationSid` serves as session/thread ID for AI context across messages
