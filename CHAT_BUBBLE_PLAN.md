@@ -192,25 +192,40 @@ Twilio Conversations has built-in `timers.inactive`. When set, Twilio transition
 
 3. **New n8n workflow** — "Chat — Post-Conversation Analysis":
    ```
-   Twilio Webhook → Is Inactive? (If) → Fetch Transcript (HTTP) → Format (Code) → Send to Analysis Webhook (HTTP)
+   Twilio Webhook → Is Inactive? (If) → Fetch Conversation Details (HTTP) → Parse Client ID (Code)
+     → Fetch Transcript (HTTP) → Format (Code) → Route to Client Analysis (Code) → Send to Analysis Webhook (HTTP)
    ```
 
-4. **Payload to analysis webhook:**
+4. **Client identification** — parse `client_id` from conversation FriendlyName:
+   - Token Endpoint sets FriendlyName: `chat_{identity}_{timestamp}` (e.g., `chat_alkoholcz_user_abc_1234`)
+   - Post-conversation workflow fetches conversation details via Twilio API
+   - Parses `client_id` from FriendlyName using same prefix logic as Message Handler
+   - Backwards compat: `chat_user_xxx` (no client prefix) → `digishares`
+
+5. **Payload to analysis webhook:**
    ```json
    {
      "conversation_sid": "CHxxx...",
-     "client_id": "digishares",
+     "client_id": "alkoholcz",
      "started_at": "2026-03-03T10:00:00Z",
      "ended_at": "2026-03-03T10:12:00Z",
      "message_count": 8,
      "transcript": [
-       { "author": "user_abc", "body": "Hi...", "timestamp": "..." },
+       { "author": "alkoholcz_user_abc", "body": "Hi...", "timestamp": "..." },
        { "author": "bot", "body": "Hello!...", "timestamp": "..." }
      ]
    }
    ```
 
-5. **Multi-client**: analysis webhook URL in per-client routing config
+6. **Multi-client routing** — `ANALYSIS_ROUTING` table in the Post-Conversation workflow:
+   ```javascript
+   const ANALYSIS_ROUTING = {
+     digishares: { webhookUrl: 'https://...' },
+     alkoholcz:  { webhookUrl: 'https://...' },
+   };
+   ```
+   - Uses same `GlobalChatbot` credential as Message Handler
+   - Unknown client → skip (don't send analysis)
 
 ---
 
@@ -219,5 +234,9 @@ Twilio Conversations has built-in `timers.inactive`. When set, Twilio transition
 - [x] **Multi-client architecture** — shared routing deployed (2026-03-12)
 - [x] **Message guardrails** — prompt injection, jailbreak, abuse filtering (deployed 2026-03-12)
 - [ ] **New client onboarding** — theme + test page + routing for 2 new clients
-- [ ] **Post-conversation webhook** — Twilio inactivity timer + transcript workflow
+- [ ] **Post-conversation webhook** — Twilio inactivity timer + transcript workflow + per-client analysis routing
+  - [ ] Verify how `onConversationStateUpdated` fires (does Twilio send conversationSid? FriendlyName?)
+  - [ ] Set `Timers.Inactive` on Create Conversation in Token Endpoint
+  - [ ] Add `onConversationStateUpdated` to Twilio Service webhook filters
+  - [ ] Build "Chat — Post-Conversation Analysis" workflow with client routing
 - [ ] **(Future) Live agent handoff** — add human participant, pause bot routing
