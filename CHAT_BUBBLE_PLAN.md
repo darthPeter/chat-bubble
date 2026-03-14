@@ -262,4 +262,4 @@ GET /v1/Services/{ServiceSid}/Conversations/{ConversationSid}/Messages
   - [ ] Set `Timers.Inactive` on Create Conversation in Token Endpoint
   - [ ] Add `onConversationStateUpdated` to Twilio Service webhook filters
   - [ ] Build "Chat — Post-Conversation Analysis" workflow with client routing
-- [ ] **(Future) Live agent handoff** — add human participant, pause bot routing
+- [ ] **(Future) Live agent handoff** — Slack as agent backend, keyword + AI escalation triggers. Separate plan: [`LIVE_AGENT_PLAN.md`](LIVE_AGENT_PLAN.md) (brainstorming, not part of the project yet)
