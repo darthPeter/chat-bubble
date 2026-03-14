@@ -320,6 +320,9 @@
   // Load theme (inserted between structural and color override)
   loadTheme(CFG.theme);
 
+  // ── Preload Twilio SDK (start download immediately, don't wait for chat open)
+  const twilioSDKReady = loadTwilioSDK();
+
   // ── HTML structure ─────────────────────────────────────────────────
   const container = document.createElement("div");
   container.innerHTML = `
@@ -542,8 +545,8 @@
       // Save session for persistence across refreshes
       saveSession(identity, conversation_sid);
 
-      // 2. Load Twilio SDK and init client
-      const TwilioConversations = await loadTwilioSDK();
+      // 2. Use preloaded Twilio SDK
+      const TwilioConversations = await twilioSDKReady;
       const clientOpts = {};
       if (data.region) clientOpts.region = data.region;
       twilioClient = await TwilioConversations.Client.create(token, clientOpts);
