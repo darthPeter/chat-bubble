@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+> **CRITICAL RULE:** All project knowledge MUST live in this repo (git-tracked). This file holds core architecture, configs, and pointers to other docs. Detailed plans and specific topics get their own `.md` files — this file links to them. Never bloat this file with deep-dive details, but make sure it knows where to FIND everything. Claude Code memory files are SHORT-TERM CACHE only — never store long-term knowledge there.
 
 ## Project Overview
 
