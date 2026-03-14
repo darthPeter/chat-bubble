@@ -42,11 +42,13 @@ n8n Workflows:
 - **GitHub repo:** https://github.com/darthPeter/chat-bubble
 - **GitHub Pages:** https://darthpeter.github.io/chat-bubble/
 - **Files:**
-  - `widget.js` — core widget (663 lines, vanilla JS)
-  - `demo.html` — test page
-  - `themes/default.css`, `themes/digishares.css` — theme files
+  - `widget.js` — core widget (vanilla JS, no build step)
+  - `demo.html` — DigiShares test page
+  - `demo-alkoholcz.html` — Alkohol.cz test page (alkohol.cz in iframe background)
+  - `themes/default.css`, `themes/digishares.css`, `themes/alkoholcz.css` — theme files
   - `workflows/` — n8n workflow JSON backups (secrets redacted)
-  - `CHAT_BUBBLE_PLAN.md` — roadmap and plans
+  - `CHAT_BUBBLE_PLAN.md` — roadmap, plans, and TODO
+  - `LIVE_AGENT_PLAN.md` — live agent handoff architecture (brainstorming, not active yet)
   - `CHANGELOG.md` — version history
 
 ## n8n Workflows
@@ -83,6 +85,7 @@ Twilio Webhook → Is User Message? (If) → Extract Message Data (Code) → Gua
 - Flagged messages get a neutral safe reply without reaching the AI webhook
 - **Route to Client**: parses `client_id` from author identity prefix (`digishares_user_xxx` → `digishares`), looks up webhook URL from `ROUTING` config table. Backwards compat: `user_xxx` (no prefix) → `digishares`.
 - Call AI Webhook uses dynamic URL from routing: `{{ $json.webhookUrl }}`
+- **Auth**: single `GlobalChatbot` httpHeaderAuth credential (ID: O7q7nPcQ1jLW2gNM) — all client AI webhooks accept the same auth token. n8n HTTP Request node can only use one static credential, so all clients share it.
 - Client webhook receives: `{ conversationSid, message, author, messageSid }`
 - Client webhook returns: `{ output }` (also supports `reply`, `message`, `text` keys)
 - `conversationSid` serves as session/thread ID for AI context across messages
@@ -122,11 +125,24 @@ n8n workflow JSON backups are stored in `workflows/` with secrets redacted as `_
 **Redacted placeholders** (actual values configured in n8n):
 - `__TWILIO_BASIC_AUTH__` — Basic auth header (base64 of API_KEY_SID:API_KEY_SECRET)
 - `__TWILIO_API_SECRET__` — Twilio API Key Secret
-- `__CLIENT_KEY__` — Client access key
+- `__CLIENT_KEY_DIGISHARES__`, `__CLIENT_KEY_ALKOHOLCZ__` — Per-client access keys
 - `__ACCOUNT_SID__`, `__API_KEY_SID__`, `__SERVICE_SID__` — Twilio identifiers
-- `__AI_WEBHOOK_URL__` — Client AI webhook URL
-- `__CREDENTIAL_ID__`, `__CREDENTIAL_NAME__` — n8n credential references
+- `__AI_WEBHOOK_URL_DIGISHARES__`, `__AI_WEBHOOK_URL_ALKOHOLCZ__` — Per-client AI webhook URLs
+- `__AI_AUTH_TOKEN_DIGISHARES__`, `__AI_AUTH_TOKEN_ALKOHOLCZ__` — Per-client AI webhook auth tokens (stored in ROUTING table but auth handled by GlobalChatbot credential)
+- `__CREDENTIAL_ID__`, `__CREDENTIAL_NAME__` — n8n credential references (GlobalChatbot)
+
+## Active Clients
+
+| Client | client_id | Theme | Demo Page | Status |
+|---|---|---|---|---|
+| DigiShares | `digishares` | `themes/digishares.css` | `demo.html` | Live |
+| Alkohol.cz | `alkoholcz` | `themes/alkoholcz.css` | `demo-alkoholcz.html` | Live (2026-03-13) |
+
+## n8n Credential Limitation
+
+n8n HTTP Request node can only bind **one static credential** — you cannot switch credentials dynamically per client. Solution: all client AI webhooks share the same `GlobalChatbot` httpHeaderAuth credential (same auth token accepted by all).
 
 ## Detailed Plan & TODO
 
 See `CHAT_BUBBLE_PLAN.md` for multi-client architecture plan, post-conversation webhook plan, and current TODO.
+See `LIVE_AGENT_PLAN.md` for live agent handoff architecture (brainstorming phase, not active).
