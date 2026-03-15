@@ -61,3 +61,15 @@
   bottom: 84px !important;
   right: 8px !important;
 }
+
+/* Mobile — reset to fullscreen (undo position overrides above) */
+@media(max-width:480px) {
+  .cb-btn {
+    bottom: 16px !important;
+    right: 16px !important;
+  }
+  .cb-window {
+    bottom: 0 !important;
+    right: 0 !important;
+  }
+}
