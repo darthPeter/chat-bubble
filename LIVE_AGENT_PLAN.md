@@ -1,8 +1,8 @@
 # Live Agent Handoff — Architecture & Plan
 
-> **Status:** Planning (not part of the project yet)
+> **Status:** In progress — Step 1 (agent.html) done, Step 2 (Agent Token Endpoint) next
 > **Date:** 2026-03-14
-> **Last revised:** 2026-03-14 — replaced Slack approach with direct Twilio SDK agent dashboard
+> **Last revised:** 2026-03-15 — agent.html built, added per-client agent isolation + AGENTS config table
 
 ---
 
@@ -177,8 +177,18 @@ USER sends message in chat bubble
        |
        v
    +------------------+
-   | Check for        |
-   | handoff trigger  |  keyword match OR AI returns { action: "handoff" }
+   | Read agentOnline |  from $getWorkflowStaticData('global')
+   | from static data |
+   +--------+---------+
+            |
+            v
+   Existing AI flow:
+   Route to Client → Call AI Webhook (with agentAvailable param)
+       |
+       v
+   +------------------+
+   | Check AI response|  AI returns { action: "handoff" } ?
+   | for handoff flag |  AND agentOnline is true?
    +--------+---------+
        |
   +----+----+
@@ -325,47 +335,73 @@ All using `conversations.dublin.ie1.twilio.com` (IE1 region).
 
 ---
 
-## Handoff Triggers — When to Switch
+## Handoff Triggers — AI Is the Sole Decision Maker
 
-### Layer 1: Keyword Detection (fast, in Message Handler)
+**No keyword detection in Message Handler.** The client AI brain decides when to hand off, based on full conversation context. This is simpler (fewer nodes in Message Handler) and smarter (AI understands nuance, frustration, context — not just regex patterns).
 
-```javascript
-const HANDOFF_KEYWORDS = [
-  /\b(talk|speak|connect)\s+(to|with)\s+(a\s+)?(human|person|agent|someone|real\s+person)/i,
-  /\b(live|real|human)\s+(agent|support|person|chat)/i,
-  /\bI\s+(want|need)\s+(a\s+)?(human|person|agent)/i,
-  /\btransfer\s+(me\s+)?(to\s+)?(support|agent|human)/i,
-];
-```
+### How It Works
 
-Checked in Message Handler before AI routing. If matched → trigger handoff immediately (skip AI call).
+1. Message Handler passes `agentAvailable: true/false` to the client AI webhook (alongside the message)
+2. The AI system prompt includes handoff instructions:
+   > "You have access to a live agent handoff feature. The `agentAvailable` parameter tells you whether a human agent is currently online.
+   > - If the user needs human help AND `agentAvailable` is true: include `"action": "handoff"` in your response
+   > - If the user needs human help AND `agentAvailable` is false: tell the user that live support is not available right now and suggest trying during working hours
+   > - Use your judgement: explicit requests ('talk to a human'), repeated failures, frustrated users, or questions outside your knowledge are all valid handoff reasons"
+3. Message Handler checks AI response for the handoff flag in Prepare Reply node
+4. If `action: "handoff"` → trigger handoff (update attrs, add agent participant, notify user)
+5. If normal response → send reply as usual
 
-### Layer 2: AI Escalation (smart, context-aware)
+### Why No Keyword Detection
 
-Add to the AI's system prompt:
-> "If you cannot help the user, or if they seem frustrated and need human assistance, include `"action": "handoff"` in your JSON response."
+- AI has full conversation context — understands "I'm done with this bot" without matching a regex
+- AI respects `agentAvailable` — won't trigger handoff when agent is offline, instead responds gracefully
+- Fewer nodes in Message Handler = simpler workflow
+- One decision maker, not two competing layers
+- AI can handle nuanced cases that keywords miss (frustration, repeated confusion, off-topic questions)
 
-After receiving AI response, check for the handoff flag in Prepare Reply node.
+### Future: Failure Counter (automatic)
 
-### Layer 3: Failure Counter (future)
-
-Track consecutive "I don't know" responses in conversation attributes. After N failures → auto-handoff.
+Track consecutive low-confidence responses in conversation attributes. After N failures → AI auto-escalates. This is an enhancement to the AI prompt, not a separate detection layer.
 
 ---
 
 ## Agent Online/Offline
 
-### Phase 1: Testing (Simple)
+### How It Works
 
-Always accept handoff. Agent replies when available. If no reply in X minutes, auto-message via n8n scheduled check: "No agent is available right now. Let me continue helping you." → set mode back to "ai".
+The agent dashboard (`agent.html`) has an **on/off toggle**. This controls whether the AI is allowed to trigger handoffs.
 
-### Phase 2: Agent Status Flag
+```
+agent.html toggle ON/OFF
+  → POST /webhook/agent-status { online: true/false }
+  → n8n stores in $getWorkflowStaticData('global').agentOnline
 
-n8n static data stores `agentOnline: true/false`. Agent dashboard toggles it via a simple n8n webhook endpoint. Message Handler checks before attempting handoff. If agents offline → AI tells user.
+Message Handler (every message):
+  → reads agentOnline from static data
+  → passes agentAvailable: true/false to client AI webhook
+  → AI decides based on context + availability
+```
 
-### Phase 3: Dashboard Presence
+**Two layers of enforcement:**
+1. **AI layer (primary):** AI knows `agentAvailable` status. If false, it tells users "agents aren't available, try during working hours" instead of triggering handoff. The AI handles this gracefully in context.
+2. **Message Handler layer (safety net):** Even if AI mistakenly returns `action: "handoff"` while `agentOnline` is false, Message Handler ignores the handoff flag and sends the AI's text reply only.
 
-Agent dashboard sends periodic heartbeat to n8n. If no heartbeat for 5 min → mark offline. More reliable than manual toggle.
+### Agent Status Endpoint
+
+Simple n8n webhook (can be a new workflow or added to Token Endpoint):
+
+```
+POST /webhook/agent-status
+Body: { "secret": "agent_password", "online": true }
+→ Validate secret
+→ $getWorkflowStaticData('global').agentOnline = true/false
+→ Return { status: "ok", online: true/false }
+```
+
+### Future: Auto-Offline
+
+- Timeout: if agent.html sends no heartbeat for X minutes → auto-set offline
+- Per-client hours: ROUTING table could include `agentHours: "09:00-17:00 CET"` for automatic scheduling
 
 ---
 
@@ -377,11 +413,16 @@ A single vanilla JS file hosted on GitHub Pages (same pattern as widget.js):
 agent.html (~300-400 lines, no build step)
 │
 ├── Auth Section
-│   └── Simple login form → POST to Agent Token Endpoint → get Twilio Access Token
+│   └── Simple login form → POST to Agent Token Endpoint → get Twilio Access Token + allowed clients list
+│
+├── Online/Offline Toggle
+│   ├── Toggle switch in header → POST to /webhook/agent-status { online: true/false }
+│   └── Visual indicator: green "Online" / grey "Offline"
 │
 ├── Sidebar (conversation list)
 │   ├── client.getSubscribedConversations() → list active handoffs
 │   ├── client.on("conversationAdded") → new handoff appears
+│   ├── Filter: only show conversations where attributes.client_id ∈ allowedClients
 │   ├── Each item shows: client_id, user identity, handoff time, last message preview
 │   └── Unread indicator (conversation.getUnreadMessagesCount())
 │
@@ -422,14 +463,30 @@ New lightweight n8n workflow (or extension of existing Token Endpoint):
 
 ```
 Agent Token Webhook → Validate Agent Credentials (Code) → Is Valid? (If)
-  → true:  Prepare JWT (agent identity) → HMAC Sign → Return Token
+  → true:  Prepare JWT (agent identity) → HMAC Sign → Return Token + allowed clients
   → false: Reject 403
 ```
 
-- Agent credentials: simple shared secret or per-agent username/password (stored in n8n Code node)
-- Identity: `agent_support` (shared) or `agent_{name}` (per-agent)
+- Agent credentials: per-agent username/password stored in `AGENTS` config table in Code node
+- Identity: `agent_{username}` (per-agent, unique)
+- Each agent has `clients: ["digishares"]` or `clients: ["alkoholcz"]` — list of assigned client_ids
+- Token response includes `{ token, identity, region, clients: [...] }` — agent.html uses this to filter conversations
 - Same JWT/HMAC pattern as existing Token Endpoint — significant code reuse
 - No conversation creation — agent joins existing conversations via SDK
+
+#### AGENTS Config Table (in Code node)
+
+```javascript
+const AGENTS = {
+  "jan":    { password: "...", clients: ["digishares"], name: "Jan" },
+  "petra":  { password: "...", clients: ["alkoholcz"], name: "Petra" },
+  "admin":  { password: "...", clients: ["digishares", "alkoholcz"], name: "Admin" },
+};
+```
+
+- Each client's employees only see their own conversations
+- An admin/super-agent can be assigned to multiple clients
+- Easy to add new agents — just add a row to the table
 
 ---
 
@@ -441,18 +498,15 @@ Add nodes after Guardrails:
 
 ```
 ... Guardrails → Is Safe?
-  → true: Fetch Conversation Attrs (HTTP GET to Twilio)
-    → Parse Mode (Code)
+  → true: Fetch Conversation Attrs (HTTP GET to Twilio) → Parse Mode + Agent Status (Code)
     → Is Agent Mode? (If)
       → true: STOP (do nothing — agent communicates via SDK)
-      → false: Check Handoff Keywords (Code)
-        → keyword match: Trigger Handoff (Code+HTTP: update attrs, add participant, notify user)
-        → no match: Route to Client → Call AI → Check AI Handoff Flag (Code)
-          → handoff flag: Trigger Handoff
-          → normal: Prepare Reply → Send to Twilio (existing)
+      → false: Route to Client → Call AI (with agentAvailable param) → Check AI Handoff Flag (Code)
+        → handoff AND agentOnline: Trigger Handoff (Code+HTTP: update attrs, add participant, notify user)
+        → normal: Prepare Reply → Send to Twilio (existing)
 ```
 
-New nodes needed: ~4-5 (Fetch Attrs, Parse Mode, Is Agent Mode?, Check Keywords, Trigger Handoff)
+New nodes needed: ~3-4 (Fetch Attrs, Parse Mode + Status, Is Agent Mode?, Trigger Handoff)
 
 ### Modified: Message Handler — Author Filter
 
@@ -471,14 +525,57 @@ Simple webhook that validates agent credentials and returns a Twilio Access Toke
 
 ---
 
-## Multi-Client Considerations
+## Multi-Client Agent Isolation
+
+Each client (DigiShares, Alkohol.cz, etc.) has their own agents/employees. Agents must only see conversations belonging to their assigned client(s).
+
+### How It Works
+
+```
+Agent logs in → Token Endpoint validates credentials → returns allowed clients list
+  → agent.html stores allowedClients = ["digishares"]
+  → On conversationAdded: check conversation attributes.client_id
+    → if client_id ∈ allowedClients → show in sidebar
+    → if client_id ∉ allowedClients → ignore (shouldn't happen, but safety net)
+
+Handoff trigger (Message Handler):
+  → When AI triggers handoff, adds agent as participant
+  → Which agent? Uses client_id to pick the right agent identity
+  → agentOnline status is per-client (not global)
+```
+
+### Per-Client Agent Status
+
+The `agentOnline` flag in n8n static data becomes per-client:
+
+```javascript
+// n8n $getWorkflowStaticData('global')
+{
+  agentOnline: {
+    "digishares": true,   // DigiShares agent is online
+    "alkoholcz": false    // Alkohol.cz agent is offline
+  }
+}
+```
+
+Message Handler reads `agentOnline[client_id]` and passes the correct `agentAvailable` to the AI webhook.
+
+Agent Status Endpoint receives `{ identity, online, client_id }` — updates per-client status.
+
+### Handoff — Which Agent Gets the Conversation?
+
+For MVP: one shared identity per client (e.g., `agent_digishares`, `agent_alkoholcz`). All agents for that client share the identity and see the same conversations.
+
+Future: per-agent identities (`agent_jan`, `agent_petra`) with a routing/assignment layer.
 
 | Aspect | How |
 |---|---|
-| **Conversation list** | agent.html shows `client_id` from conversation attributes — agent sees which client each chat belongs to |
-| **Agent assignment** | For testing: single `agent_support` identity, any agent sees all. Future: per-client agent pools |
-| **Handoff message** | Per-client from ROUTING table in Message Handler: "Connecting you with DigiShares support..." |
-| **Agent hours** | Per-client config possible in ROUTING table: `{ agentHours: "09:00-17:00 CET" }` |
+| **Conversation list** | agent.html filters by `allowedClients` — agents only see their own client's conversations |
+| **Agent identity** | MVP: `agent_{client_id}` (shared per client). Future: `agent_{username}` (per-agent) |
+| **Handoff trigger** | Message Handler adds `agent_{client_id}` as participant based on conversation's client_id |
+| **Handoff message** | Per-client from ROUTING table: "Connecting you with DigiShares support..." |
+| **Agent hours** | Per-client config in ROUTING table: `{ agentHours: "09:00-17:00 CET" }` |
+| **Online/offline** | Per-client in static data — DigiShares agent online doesn't affect Alkohol.cz |
 
 ---
 
@@ -498,15 +595,31 @@ At no point do you "rip out" infrastructure. Each phase adds to the same page.
 
 ---
 
-## Implementation Order (When We Start)
+## Post-Processing / Conversation Summary
 
-1. **Agent Token Endpoint** — new n8n workflow, validates agent creds, returns Twilio token
-2. **Message Handler: mode check** — fetch conversation attributes, skip AI if mode="agent"
-3. **Message Handler: author filter** — also filter agent messages (not just bot)
-4. **Message Handler: keyword detection** — detect "talk to human" before AI routing
-5. **Message Handler: handoff trigger** — update attrs + add participant + notify user
-6. **agent.html: basic version** — auth, conversation list, chat view, send, resolve
-7. **Test end-to-end** — one client, one agent, full roundtrip
-8. **AI escalation** — add handoff flag to AI system prompt + check in Prepare Reply
-9. **Online/offline** — basic timeout fallback (auto-resolve after X minutes)
-10. **Browser notifications** — Notification API for new handoffs
+The post-conversation webhook (planned separately in `CHAT_BUBBLE_PLAN.md`) is **fully compatible** with live agent conversations. All messages — user, bot, and agent — live in the same Twilio Conversation.
+
+When fetching the transcript (`GET /Conversations/{sid}/Messages`), every message has an `author` field:
+- `alkoholcz_user_xxx` → user message
+- `bot` → AI response
+- `agent_support` → live agent response
+- `system` → handoff notifications ("Connecting you with support...")
+
+The summary workflow can distinguish AI vs human portions: "AI handled the first 5 messages, then a human agent resolved the issue." No changes needed to the post-processing workflow — it just reads richer transcripts.
+
+---
+
+## Implementation Order
+
+| Step | What | Status |
+|---|---|---|
+| 1 | **agent.html** — dashboard page: login, conversation list, chat, resolve, on/off toggle, browser notifications, demo mode (`?demo`), per-client filtering via `allowedClients` | **DONE** (2026-03-15) |
+| 2 | **Agent Token Endpoint** — n8n workflow `Dv0ZfV2HELCw7Ske`: AGENTS config table, validates creds, returns Twilio token + `clients` list | **DONE** (2026-03-15) |
+| 3 | **Agent Status Endpoint** — webhook to toggle per-client `agentOnline` in n8n static data | **NEXT** |
+| 4 | **Message Handler changes** — mode check (fetch attrs, skip AI if mode="agent"), author filter (also filter agent_*), pass per-client `agentAvailable` to AI, handoff trigger (check AI response for `action: "handoff"`, update attrs + add participant) | Not started |
+| 5 | **Wire up** — AI system prompt with handoff instructions + agentAvailable logic, end-to-end test | Not started |
+
+### Future enhancements (after MVP)
+- Timeout fallback: auto-resolve if agent doesn't respond within X minutes
+- Per-agent identities with routing/assignment layer
+- Agent hours: per-client `agentHours` in ROUTING table for automatic scheduling

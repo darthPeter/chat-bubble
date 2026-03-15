@@ -43,12 +43,13 @@ n8n Workflows:
 - **GitHub Pages:** https://darthpeter.github.io/chat-bubble/
 - **Files:**
   - `widget.js` — core widget (vanilla JS, no build step)
+  - `agent.html` — agent dashboard for live agent handoff (vanilla JS, no build step, `?demo` for demo mode)
   - `demo.html` — DigiShares test page
   - `demo-alkoholcz.html` — Alkohol.cz test page (alkohol.cz in iframe background)
   - `themes/default.css`, `themes/digishares.css`, `themes/alkoholcz.css` — theme files
   - `workflows/` — n8n workflow JSON backups (secrets redacted)
   - `CHAT_BUBBLE_PLAN.md` — roadmap, plans, and TODO
-  - `LIVE_AGENT_PLAN.md` — live agent handoff architecture (brainstorming, not active yet)
+  - `LIVE_AGENT_PLAN.md` — live agent handoff architecture and implementation status
   - `CHANGELOG.md` — version history
 
 ## n8n Workflows
@@ -60,6 +61,7 @@ n8n Workflows:
 |---|---|---|---|
 | Chat — Token Endpoint | `ODrNXQASOPNObSWd` | `/webhook/chat-token` | Active, security hardened |
 | Chat — Message Handler | `wnHbfZ7Djko2G4HZ` | `/webhook/chat-message` | Active, AI via client webhook |
+| Chat — Agent Token Endpoint | `Dv0ZfV2HELCw7Ske` | `/webhook/agent-token` | Active, agent auth + JWT |
 
 ### Token Endpoint (11 nodes)
 ```
@@ -73,6 +75,19 @@ Chat Token Webhook → Rate Limit & Validate (Code) → Is Valid? (If)
 - Client validation: `CLIENTS` config table in Rate Limit node — validates key per `client_id` from request body. No `client_id` defaults to `digishares`.
 - Token TTL: 1800s (30 min), widget handles refresh via `tokenAboutToExpire`
 - Session restore: `refresh: true` + `conversation_sid` skips conversation creation
+
+### Agent Token Endpoint (8 nodes)
+```
+Agent Token Webhook → Validate Agent (Code) → Is Valid? (If)
+  → true:  Prepare JWT → HMAC Sign → Build Token Response → Return Token
+  → false: Reject Request (Respond 403)
+```
+- `AGENTS` config table in Validate Agent node — per-agent username/password + assigned `clients` list
+- Returns `{ token, identity, clients, region }` — agent.html uses `clients` to filter conversations
+- Identity format: `agent_{username}`
+- No conversation creation — agents join existing conversations via Twilio SDK
+- Same JWT/HMAC pattern as frontend Token Endpoint
+- Token TTL: 1800s (30 min), agent.html handles refresh via `tokenAboutToExpire`
 
 ### Message Handler (10 nodes)
 ```
@@ -130,6 +145,7 @@ n8n workflow JSON backups are stored in `workflows/` with secrets redacted as `_
 - `__AI_WEBHOOK_URL_DIGISHARES__`, `__AI_WEBHOOK_URL_ALKOHOLCZ__` — Per-client AI webhook URLs
 - `__AI_AUTH_TOKEN_DIGISHARES__`, `__AI_AUTH_TOKEN_ALKOHOLCZ__` — Per-client AI webhook auth tokens (stored in ROUTING table but auth handled by GlobalChatbot credential)
 - `__CREDENTIAL_ID__`, `__CREDENTIAL_NAME__` — n8n credential references (GlobalChatbot)
+- `__AGENT_PASSWORD_ADMIN__` — Agent login password (stored in AGENTS table in Validate Agent node)
 
 ## Active Clients
 
@@ -145,4 +161,4 @@ n8n HTTP Request node can only bind **one static credential** — you cannot swi
 ## Detailed Plan & TODO
 
 See `CHAT_BUBBLE_PLAN.md` for multi-client architecture plan, post-conversation webhook plan, and current TODO.
-See `LIVE_AGENT_PLAN.md` for live agent handoff architecture (brainstorming phase, not active).
+See `LIVE_AGENT_PLAN.md` for live agent handoff architecture (in progress — steps 1-2 done, step 3 next).

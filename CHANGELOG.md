@@ -1,5 +1,45 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-03-15 — Agent dashboard + token endpoint (live agent handoff — steps 1-2/5)
+
+### New file: agent.html
+- **Agent dashboard** for live agent handoff — single vanilla JS file, no build step, hosted on GitHub Pages
+- **Login screen** — username/password form, POSTs to Agent Token Endpoint (to be built in step 2)
+- **Conversation list** — sidebar with real-time updates via `conversationAdded`/`conversationRemoved` events, sorted by latest message, unread badges, client_id labels
+- **Chat view** — loads last 50 messages, real-time `messageAdded` listener, messages styled by author type (user/bot/agent/system)
+- **Send messages** — `conversation.sendMessage()` directly via Twilio SDK, Enter to send, Shift+Enter for newline
+- **Resolve button** — `updateAttributes({mode:"ai"})` + sends "back with AI" message + `leave()`, with confirmation dialog
+- **Online/Offline toggle** — POSTs to Agent Status Endpoint (to be built in step 3), falls back gracefully if endpoint doesn't exist yet
+- **Browser notifications** — Notification API, prompts for permission, alerts on new handoffs
+- **Tab title** — shows unread count like `(3) Agent Dashboard`
+- **Per-client agent isolation** — `allowedClients` from token response filters conversations by `client_id`, so DigiShares agents only see DigiShares chats
+- **Demo mode** (`?demo`) — 2 mock conversations (DigiShares + Alkohol.cz) with realistic chat history, fully interactive UI without backend
+- **Token refresh** — `tokenAboutToExpire` handler, credentials stored in memory (not localStorage)
+- **Mobile responsive** — stacks sidebar/chat vertically on small screens
+- ~80% code reuse from widget.js (SDK loader, client creation, token refresh, events)
+
+### New workflow: Chat — Agent Token Endpoint (`Dv0ZfV2HELCw7Ske`, 8 nodes)
+```
+Agent Token Webhook → Validate Agent → Is Valid?
+  → true:  Prepare JWT → HMAC Sign → Build Token Response → Return Token
+  → false: Reject 403
+```
+- **AGENTS config table** in Validate Agent node — per-agent username/password + assigned client_ids
+- Returns `{ token, identity, clients, region }` — agent.html uses `clients` to filter conversations
+- Identity format: `agent_{username}` — unique per agent
+- No conversation creation — agents join existing conversations via Twilio SDK
+- Same JWT/HMAC pattern as frontend Token Endpoint, separate workflow for isolation
+- Tested: login works, invalid credentials return 403
+
+### Updated: LIVE_AGENT_PLAN.md
+- Status changed from "Planning" to "In progress"
+- Added **AGENTS config table** spec — per-agent username/password + assigned client_ids
+- Added **per-client agent isolation** section — agents only see their own client's conversations
+- Added **per-client agentOnline** — `agentOnline: { digishares: true, alkoholcz: false }` instead of global flag
+- Updated implementation order with current status (steps 1-2 done, step 3 next)
+
+---
+
 ## 2026-03-12 — Clickable URLs in bot messages
 
 ### Widget (widget.js)

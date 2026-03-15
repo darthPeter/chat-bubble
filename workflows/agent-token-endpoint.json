@@ -1,0 +1,159 @@
+{
+  "_backup": {
+    "date": "2026-03-15",
+    "version": 116,
+    "source": "n8n MCP"
+  },
+  "id": "Dv0ZfV2HELCw7Ske",
+  "name": "Chat — Agent Token Endpoint",
+  "active": true,
+  "nodes": [
+    {
+      "id": "ef6abe4c-264c-4aa8-a55d-2d5bb0ed25cb",
+      "name": "Agent Token Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [200, 300],
+      "webhookId": "f7d9566d-cb07-4b55-a48f-28ec946502d0",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "agent-token",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "0e9bddfc-c231-41c5-8d9a-6ec36b8ab642",
+      "name": "Validate Agent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [420, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const webhookData = $('Agent Token Webhook').first().json;\n\n// ── Agent config table ────────────────────────────────────\n// Add new agents here. clients = list of client_ids this agent can access.\nconst AGENTS = {\n  admin: { password: '__AGENT_PASSWORD_ADMIN__', clients: ['digishares', 'alkoholcz'], name: 'Admin' },\n};\n\nconst username = webhookData.body?.username || '';\nconst password = webhookData.body?.password || '';\n\nif (!username || !password) {\n  return [{ json: { valid: false, error: 'Username and password required' } }];\n}\n\nconst agent = AGENTS[username];\nif (!agent || agent.password !== password) {\n  return [{ json: { valid: false, error: 'Invalid credentials' } }];\n}\n\nreturn [{ json: { valid: true, identity: 'agent_' + username, clients: agent.clients, name: agent.name } }];"
+      }
+    },
+    {
+      "id": "a5c59137-d4ee-4651-905b-2a2cd3c842d0",
+      "name": "Is Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [640, 300],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-valid",
+              "leftValue": "={{ $json.valid }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "f15b61fd-4391-4f32-866f-6ec3790c6860",
+      "name": "Prepare JWT",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [860, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const ACCOUNT_SID    = '__ACCOUNT_SID__';\nconst API_KEY_SID    = '__API_KEY_SID__';\nconst SERVICE_SID    = '__SERVICE_SID__';\nconst TOKEN_TTL      = 1800; // 30 minutes\n\n// Agent identity from validation step\nconst identity = $('Validate Agent').first().json.identity;\n\nfunction base64url(str) {\n  return btoa(str).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');\n}\n\nconst now = Math.floor(Date.now() / 1000);\n\nconst header = JSON.stringify({ typ: 'JWT', alg: 'HS256', cty: 'twilio-fpa;v=1' });\nconst payload = JSON.stringify({\n  jti: `${API_KEY_SID}-${now}`,\n  iss: API_KEY_SID,\n  sub: ACCOUNT_SID,\n  iat: now,\n  exp: now + TOKEN_TTL,\n  grants: {\n    identity: identity,\n    chat: { service_sid: SERVICE_SID },\n  },\n});\n\nconst headerB64 = base64url(header);\nconst payloadB64 = base64url(payload);\nconst unsignedToken = `${headerB64}.${payloadB64}`;\n\nreturn [{\n  json: { unsignedToken },\n}];"
+      }
+    },
+    {
+      "id": "4535de9e-aee4-4a00-9436-a1dc894435a9",
+      "name": "HMAC Sign",
+      "type": "n8n-nodes-base.crypto",
+      "typeVersion": 1,
+      "position": [1080, 300],
+      "parameters": {
+        "action": "hmac",
+        "type": "SHA256",
+        "binaryData": false,
+        "value": "={{ $json.unsignedToken }}",
+        "secret": "__TWILIO_API_SECRET__",
+        "encoding": "base64",
+        "dataPropertyName": "data"
+      }
+    },
+    {
+      "id": "8accd098-7809-41ec-934c-ba7ce617e334",
+      "name": "Build Token Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1300, 300],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const unsignedToken = $('Prepare JWT').first().json.unsignedToken;\nconst hmacBase64 = $json.data;\nconst agentData = $('Validate Agent').first().json;\n\n// Convert standard base64 to base64url\nconst sig = hmacBase64.replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/g, '');\n\nconst token = `${unsignedToken}.${sig}`;\n\nreturn [{\n  json: {\n    token,\n    identity: agentData.identity,\n    clients: agentData.clients,\n    region: 'ie1',\n  },\n}];"
+      }
+    },
+    {
+      "id": "f2e073c3-a2f6-4be0-aa6e-15b31ebe2ad3",
+      "name": "Return Token",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [1520, 300],
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {}
+      }
+    },
+    {
+      "id": "512ff47a-52ca-47d2-ba5a-af0770e1bc1b",
+      "name": "Reject Request",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [860, 520],
+      "parameters": {
+        "respondWith": "firstIncomingItem",
+        "options": {
+          "responseCode": 403
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Agent Token Webhook": {
+      "main": [[{"node": "Validate Agent", "type": "main", "index": 0}]]
+    },
+    "Validate Agent": {
+      "main": [[{"node": "Is Valid?", "type": "main", "index": 0}]]
+    },
+    "Is Valid?": {
+      "main": [
+        [{"node": "Prepare JWT", "type": "main", "index": 0}],
+        [{"node": "Reject Request", "type": "main", "index": 0}]
+      ]
+    },
+    "Prepare JWT": {
+      "main": [[{"node": "HMAC Sign", "type": "main", "index": 0}]]
+    },
+    "HMAC Sign": {
+      "main": [[{"node": "Build Token Response", "type": "main", "index": 0}]]
+    },
+    "Build Token Response": {
+      "main": [[{"node": "Return Token", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
