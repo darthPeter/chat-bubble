@@ -1,5 +1,13 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-03-15 — Fix alkohol.cz mobile fullscreen
+
+### Theme (themes/alkoholcz.css)
+- Fixed chat window not going fullscreen on mobile — theme's `bottom: 84px !important` was overriding widget.js mobile `bottom: 0`
+- Added mobile `@media(max-width:480px)` in theme to reset `.cb-window` and `.cb-btn` to proper fullscreen positions
+
+---
+
 ## 2026-03-15 — Agent dashboard + token endpoint (live agent handoff — steps 1-2/5)
 
 ### New file: agent.html

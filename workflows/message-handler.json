@@ -1,6 +1,12 @@
 {
-  "name": "Chat — Message Handler",
+  "_backup": {
+    "date": "2026-03-15",
+    "version": 45,
+    "source": "n8n MCP",
+    "note": "Pre-handoff baseline — before adding agent status endpoint and handoff logic"
+  },
   "id": "wnHbfZ7Djko2G4HZ",
+  "name": "Chat — Message Handler",
   "active": true,
   "nodes": [
     {
@@ -24,13 +30,21 @@
       "position": [480, 304],
       "parameters": {
         "conditions": {
-          "options": { "version": 2, "leftValue": "", "caseSensitive": true, "typeValidation": "strict" },
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "filter-author",
               "leftValue": "={{ $json.body.Author }}",
               "rightValue": "bot",
-              "operator": { "type": "string", "operation": "notEquals" }
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
             }
           ],
           "combinator": "and"
@@ -45,7 +59,7 @@
       "typeVersion": 2,
       "position": [720, 304],
       "parameters": {
-        "jsCode": "const { body } = $input.first().json;\n\nlet messageBody = body?.Body || '';\n\nconst MAX_LENGTH = 2000;\nif (messageBody.length > MAX_LENGTH) {\n  messageBody = messageBody.substring(0, MAX_LENGTH);\n}\n\nreturn [{\n  json: {\n    conversationSid: body?.ConversationSid || '',\n    messageBody,\n    author: body?.Author || '',\n    messageSid: body?.MessageSid || '',\n    accountSid: body?.AccountSid || '',\n    eventType: body?.EventType || '',\n  },\n}];"
+        "jsCode": "const { body } = $input.first().json;\n\nlet messageBody = body?.Body || '';\n\n// Truncate messages over 2000 characters to prevent AI token abuse\nconst MAX_LENGTH = 2000;\nif (messageBody.length > MAX_LENGTH) {\n  messageBody = messageBody.substring(0, MAX_LENGTH);\n}\n\nreturn [{\n  json: {\n    conversationSid: body?.ConversationSid || '',\n    messageBody,\n    author: body?.Author || '',\n    messageSid: body?.MessageSid || '',\n    accountSid: body?.AccountSid || '',\n    eventType: body?.EventType || '',\n  },\n}];"
       }
     },
     {
@@ -55,7 +69,7 @@
       "typeVersion": 2,
       "position": [960, 304],
       "parameters": {
-        "jsCode": "const message = $json.messageBody || '';\n\nif (message.startsWith('[system]')) {\n  return [{ json: { ...$json, safe: true, reason: '' } }];\n}\n\nconst INJECTION = [\n  /ignore\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions|rules|prompts|guidelines)/i,\n  /disregard\\s+(all\\s+)?(previous|prior|above|your)\\s+(instructions|rules|prompts)/i,\n  /forget\\s+(all\\s+)?(previous|prior|your)\\s+(instructions|rules|context|training)/i,\n  /new\\s+(instructions|rules|prompt|directive)\\s*:/i,\n  /override\\s+(previous|all|your)\\s+(instructions|rules|settings)/i,\n  /you\\s+are\\s+now\\s+(a|an|the|my)\\s/i,\n  /from\\s+now\\s+on\\s+(you|ignore|forget|act)/i,\n  /\\[system\\]|\\[INST\\]|<\\|im_start\\|/i,\n  /\\bsystem\\s*:\\s/i,\n];\n\nconst JAILBREAK = [\n  /\\bdan\\s*mode\\b/i,\n  /\\bjailbreak\\b/i,\n  /\\bdeveloper\\s*mode\\b/i,\n  /\\bgod\\s*mode\\b/i,\n  /pretend\\s+(you|that)\\s+(have\\s+no|don't\\s+have|are\\s+not\\s+bound|are\\s+free|can\\s+do\\s+anything)/i,\n  /act\\s+(as\\s+if|like)\\s+(you\\s+)?(have\\s+no|there\\s+are\\s+no)\\s+(rules|restrictions|limitations)/i,\n  /bypass\\s+(your|all|the|any)\\s+(restrictions|rules|filters|safety|guidelines)/i,\n  /enable\\s+(unrestricted|unfiltered|uncensored)\\b/i,\n];\n\nconst EXTRACTION = [\n  /what\\s+are\\s+your\\s+(instructions|rules|guidelines|system\\s*prompt)/i,\n  /(show|reveal|display|print|output|repeat|tell\\s+me)\\s+(me\\s+)?(your|the)\\s+(system\\s*prompt|instructions|initial\\s*prompt|original\\s*prompt)/i,\n  /what\\s+(were\\s+you|was\\s+your)\\s+(told|instructed|programmed|trained|configured)/i,\n];\n\nconst ABUSE = [\n  /\\b(fuck\\s*you|go\\s+fuck|motherfuck|piece\\s+of\\s+shit)\\b/i,\n  /\\b(kill\\s+(yourself|yourselves)|i('ll|\\s+will)\\s+(kill|hurt|harm|attack)\\s+you)\\b/i,\n];\n\nconst CODE_INJECTION = [\n  /<script[\\s>]/i,\n  /javascript\\s*:/i,\n  /on(load|error|click|mouseover)\\s*=/i,\n];\n\nconst checks = [\n  { patterns: INJECTION, category: 'prompt_injection' },\n  { patterns: JAILBREAK, category: 'jailbreak' },\n  { patterns: EXTRACTION, category: 'data_extraction' },\n  { patterns: ABUSE, category: 'abuse' },\n  { patterns: CODE_INJECTION, category: 'code_injection' },\n];\n\nfor (const { patterns, category } of checks) {\n  for (const pattern of patterns) {\n    if (pattern.test(message)) {\n      return [{ json: { ...$json, safe: false, reason: category } }];\n    }\n  }\n}\n\nreturn [{ json: { ...$json, safe: true, reason: '' } }];"
+        "jsCode": "const message = $json.messageBody || '';\n\n// Pass through system messages (e.g., welcome message trigger)\nif (message.startsWith('[system]')) {\n  return [{ json: { ...$json, safe: true, reason: '' } }];\n}\n\n// ── Prompt Injection ──────────────────────────────────────\nconst INJECTION = [\n  /ignore\\s+(all\\s+)?(previous|prior|above|earlier)\\s+(instructions|rules|prompts|guidelines)/i,\n  /disregard\\s+(all\\s+)?(previous|prior|above|your)\\s+(instructions|rules|prompts)/i,\n  /forget\\s+(all\\s+)?(previous|prior|your)\\s+(instructions|rules|context|training)/i,\n  /new\\s+(instructions|rules|prompt|directive)\\s*:/i,\n  /override\\s+(previous|all|your)\\s+(instructions|rules|settings)/i,\n  /you\\s+are\\s+now\\s+(a|an|the|my)\\s/i,\n  /from\\s+now\\s+on\\s+(you|ignore|forget|act)/i,\n  /\\[system\\]|\\[INST\\]|<\\|im_start\\|/i,\n  /\\bsystem\\s*:\\s/i,\n];\n\n// ── Jailbreak ─────────────────────────────────────────────\nconst JAILBREAK = [\n  /\\bdan\\s*mode\\b/i,\n  /\\bjailbreak\\b/i,\n  /\\bdeveloper\\s*mode\\b/i,\n  /\\bgod\\s*mode\\b/i,\n  /pretend\\s+(you|that)\\s+(have\\s+no|don't\\s+have|are\\s+not\\s+bound|are\\s+free|can\\s+do\\s+anything)/i,\n  /act\\s+(as\\s+if|like)\\s+(you\\s+)?(have\\s+no|there\\s+are\\s+no)\\s+(rules|restrictions|limitations)/i,\n  /bypass\\s+(your|all|the|any)\\s+(restrictions|rules|filters|safety|guidelines)/i,\n  /enable\\s+(unrestricted|unfiltered|uncensored)\\b/i,\n];\n\n// ── Data Extraction ───────────────────────────────────────\nconst EXTRACTION = [\n  /what\\s+are\\s+your\\s+(instructions|rules|guidelines|system\\s*prompt)/i,\n  /(show|reveal|display|print|output|repeat|tell\\s+me)\\s+(me\\s+)?(your|the)\\s+(system\\s*prompt|instructions|initial\\s*prompt|original\\s*prompt)/i,\n  /what\\s+(were\\s+you|was\\s+your)\\s+(told|instructed|programmed|trained|configured)/i,\n];\n\n// ── Abuse & Threats ───────────────────────────────────────\nconst ABUSE = [\n  /\\b(fuck\\s*you|go\\s+fuck|motherfuck|piece\\s+of\\s+shit)\\b/i,\n  /\\b(kill\\s+(yourself|yourselves)|i('ll|\\s+will)\\s+(kill|hurt|harm|attack)\\s+you)\\b/i,\n];\n\n// ── Code Injection ────────────────────────────────────────\nconst CODE_INJECTION = [\n  /<script[\\s>]/i,\n  /javascript\\s*:/i,\n  /on(load|error|click|mouseover)\\s*=/i,\n];\n\n// Run all checks\nconst checks = [\n  { patterns: INJECTION, category: 'prompt_injection' },\n  { patterns: JAILBREAK, category: 'jailbreak' },\n  { patterns: EXTRACTION, category: 'data_extraction' },\n  { patterns: ABUSE, category: 'abuse' },\n  { patterns: CODE_INJECTION, category: 'code_injection' },\n];\n\nfor (const { patterns, category } of checks) {\n  for (const pattern of patterns) {\n    if (pattern.test(message)) {\n      return [{ json: { ...$json, safe: false, reason: category } }];\n    }\n  }\n}\n\nreturn [{ json: { ...$json, safe: true, reason: '' } }];"
       }
     },
     {
@@ -66,12 +80,21 @@
       "position": [1200, 304],
       "parameters": {
         "conditions": {
-          "options": { "version": 2, "leftValue": "", "caseSensitive": true, "typeValidation": "strict" },
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
               "id": "check-safe",
               "leftValue": "={{ $json.safe }}",
-              "operator": { "type": "boolean", "operation": "true", "singleValue": true }
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
             }
           ],
           "combinator": "and"
@@ -86,7 +109,7 @@
       "typeVersion": 2,
       "position": [1440, 304],
       "parameters": {
-        "jsCode": "const ROUTING = {\n  digishares: {\n    webhookUrl: '__AI_WEBHOOK_URL_DIGISHARES__',\n    authToken: '__AI_AUTH_TOKEN_DIGISHARES__',\n  },\n  alkoholcz: {\n    webhookUrl: '__AI_WEBHOOK_URL_ALKOHOLCZ__',\n    authToken: '__AI_AUTH_TOKEN_ALKOHOLCZ__',\n  },\n};\n\nconst author = $json.author || '';\nconst clientId = author.includes('_user_')\n  ? author.split('_user_')[0]\n  : 'digishares';\n\nconst route = ROUTING[clientId];\n\nif (!route) {\n  return [];\n}\n\nreturn [{ json: { ...$json, clientId, webhookUrl: route.webhookUrl, authToken: route.authToken } }];"
+        "jsCode": "// ── Client routing table ───────────────────────────────────\n// Add new clients here. Each entry maps to an AI webhook.\nconst ROUTING = {\n  digishares: {\n    webhookUrl: '__AI_WEBHOOK_URL_DIGISHARES__',\n    authToken: '__AI_AUTH_TOKEN_DIGISHARES__',\n  },\n  alkoholcz: {\n    webhookUrl: '__AI_WEBHOOK_URL_ALKOHOLCZ__',\n    authToken: '__AI_AUTH_TOKEN_ALKOHOLCZ__',\n  },\n};\n\n// Parse client_id from author identity: 'digishares_user_xxx' → 'digishares'\n// Backwards compat: 'user_xxx' (no prefix) → 'digishares'\nconst author = $json.author || '';\nconst clientId = author.includes('_user_')\n  ? author.split('_user_')[0]\n  : 'digishares';\n\nconst route = ROUTING[clientId];\n\nif (!route) {\n  // Unknown client — drop silently (don't crash the workflow)\n  return [];\n}\n\nreturn [{ json: { ...$json, clientId, webhookUrl: route.webhookUrl, authToken: route.authToken } }];"
       }
     },
     {
@@ -104,13 +127,18 @@
         "specifyHeaders": "keypair",
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"conversationSid\": \"{{ $json.conversationSid }}\",\n  \"message\": \"{{ $json.messageBody }}\",\n  \"author\": \"{{ $json.author }}\",\n  \"messageSid\": \"{{ $json.messageSid }}\"\n}",
-        "options": { "timeout": 30000 }
+        "options": {
+          "timeout": 30000
+        }
       },
       "credentials": {
         "httpHeaderAuth": {
@@ -126,7 +154,7 @@
       "typeVersion": 2,
       "position": [1920, 304],
       "parameters": {
-        "jsCode": "const aiResponse = $json;\nconst conversationSid = $('Extract Message Data').first().json.conversationSid;\n\nlet botReply = aiResponse.reply || aiResponse.message || aiResponse.output || aiResponse.text || '';\n\nif (!botReply && typeof aiResponse === 'string') {\n  botReply = aiResponse;\n}\n\nif (!botReply) {\n  botReply = 'Sorry, I could not generate a response.';\n}\n\nreturn [{\n  json: { conversationSid, botReply },\n}];"
+        "jsCode": "const aiResponse = $json;\nconst conversationSid = $('Extract Message Data').first().json.conversationSid;\n\n// The client AI webhook should return a reply field\n// Supports: { reply: '...' } or { message: '...' } or { output: '...' } or plain text\nlet botReply = aiResponse.reply || aiResponse.message || aiResponse.output || aiResponse.text || '';\n\n// If response is a string at top level, use it directly\nif (!botReply && typeof aiResponse === 'string') {\n  botReply = aiResponse;\n}\n\nif (!botReply) {\n  botReply = 'Sorry, I could not generate a response.';\n}\n\nreturn [{\n  json: { conversationSid, botReply },\n}];"
       }
     },
     {
@@ -151,15 +179,24 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "__TWILIO_BASIC_AUTH__" }
+            {
+              "name": "Authorization",
+              "value": "__TWILIO_BASIC_AUTH__"
+            }
           ]
         },
         "sendBody": true,
         "contentType": "form-urlencoded",
         "bodyParameters": {
           "parameters": [
-            { "name": "Author", "value": "bot" },
-            { "name": "Body", "value": "={{ $json.botReply }}" }
+            {
+              "name": "Author",
+              "value": "bot"
+            },
+            {
+              "name": "Body",
+              "value": "={{ $json.botReply }}"
+            }
           ]
         },
         "options": {}
@@ -168,52 +205,37 @@
   ],
   "connections": {
     "Twilio Message Webhook": {
-      "main": [[{ "node": "Is User Message?", "type": "main", "index": 0 }]]
+      "main": [[{"node": "Is User Message?", "type": "main", "index": 0}]]
     },
     "Is User Message?": {
-      "main": [[{ "node": "Extract Message Data", "type": "main", "index": 0 }]]
+      "main": [[{"node": "Extract Message Data", "type": "main", "index": 0}]]
     },
     "Extract Message Data": {
-      "main": [[{ "node": "Guardrails", "type": "main", "index": 0 }]]
+      "main": [[{"node": "Guardrails", "type": "main", "index": 0}]]
     },
     "Guardrails": {
-      "main": [[{ "node": "Is Safe?", "type": "main", "index": 0 }]]
+      "main": [[{"node": "Is Safe?", "type": "main", "index": 0}]]
     },
     "Is Safe?": {
       "main": [
-        [{ "node": "Route to Client", "type": "main", "index": 0 }],
-        [{ "node": "Prepare Safe Reply", "type": "main", "index": 0 }]
+        [{"node": "Route to Client", "type": "main", "index": 0}],
+        [{"node": "Prepare Safe Reply", "type": "main", "index": 0}]
       ]
     },
     "Route to Client": {
-      "main": [[{ "node": "Call AI Webhook", "type": "main", "index": 0 }]]
+      "main": [[{"node": "Call AI Webhook", "type": "main", "index": 0}]]
     },
     "Call AI Webhook": {
-      "main": [[{ "node": "Prepare Reply", "type": "main", "index": 0 }]]
+      "main": [[{"node": "Prepare Reply", "type": "main", "index": 0}]]
     },
     "Prepare Reply": {
-      "main": [[{ "node": "Send Reply to Twilio", "type": "main", "index": 0 }]]
+      "main": [[{"node": "Send Reply to Twilio", "type": "main", "index": 0}]]
     },
     "Prepare Safe Reply": {
-      "main": [[{ "node": "Send Reply to Twilio", "type": "main", "index": 0 }]]
+      "main": [[{"node": "Send Reply to Twilio", "type": "main", "index": 0}]]
     }
   },
   "settings": {
     "executionOrder": "v1"
-  },
-  "_backup": {
-    "date": "2026-03-12",
-    "version": "v3.0 — alkoholcz routing + per-client auth tokens in ROUTING table",
-    "n8n_version_counter": 42,
-    "redacted_placeholders": {
-      "__AI_WEBHOOK_URL_DIGISHARES__": "DigiShares AI webhook URL",
-      "__AI_WEBHOOK_URL_ALKOHOLCZ__": "Alkohol.cz AI webhook URL",
-      "__AI_AUTH_TOKEN_DIGISHARES__": "DigiShares AI webhook auth token",
-      "__AI_AUTH_TOKEN_ALKOHOLCZ__": "Alkohol.cz AI webhook auth token",
-      "__TWILIO_BASIC_AUTH__": "Basic auth header: base64(API_KEY_SID:API_KEY_SECRET)",
-      "__SERVICE_SID__": "Twilio Conversations Service SID (IE1)",
-      "__CREDENTIAL_ID__": "n8n httpHeaderAuth credential ID",
-      "__CREDENTIAL_NAME__": "n8n httpHeaderAuth credential name"
-    }
   }
 }

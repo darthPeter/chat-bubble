@@ -388,19 +388,33 @@ Message Handler (every message):
 
 ### Agent Status Endpoint
 
-Simple n8n webhook (can be a new workflow or added to Token Endpoint):
+Added as a **second webhook trigger in the Message Handler workflow** (not a separate workflow). This way both the status toggle and the message processing share the same `$getWorkflowStaticData('global')` — zero latency, no external API calls.
 
 ```
 POST /webhook/agent-status
-Body: { "secret": "agent_password", "online": true }
-→ Validate secret
-→ $getWorkflowStaticData('global').agentOnline = true/false
-→ Return { status: "ok", online: true/false }
+Body: { "identity": "agent_admin", "online": true, "client_id": "alkoholcz" }
+→ n8n static data: agentOnline["alkoholcz"] = true
+→ Return { status: "ok", online: true }
 ```
+
+Static data structure (per-client, not global):
+```javascript
+// $getWorkflowStaticData('global')
+{
+  agentOnline: {
+    "digishares": false,
+    "alkoholcz": true
+  }
+}
+```
+
+Message Handler reads `agentOnline[client_id]` per message — instant lookup, no API call.
+
+**Why static data is fine:** Agent toggles on/off manually. If they're online but unresponsive, that's their problem — not a system issue. Static data persists across n8n restarts (stored in n8n's database). No disconnect detection needed for MVP.
 
 ### Future: Auto-Offline
 
-- Timeout: if agent.html sends no heartbeat for X minutes → auto-set offline
+- Heartbeat: agent.html pings `/webhook/agent-status` every 2 min, status handler checks timestamp, auto-offline after 5 min silence
 - Per-client hours: ROUTING table could include `agentHours: "09:00-17:00 CET"` for automatic scheduling
 
 ---
@@ -615,11 +629,13 @@ The summary workflow can distinguish AI vs human portions: "AI handled the first
 |---|---|---|
 | 1 | **agent.html** — dashboard page: login, conversation list, chat, resolve, on/off toggle, browser notifications, demo mode (`?demo`), per-client filtering via `allowedClients` | **DONE** (2026-03-15) |
 | 2 | **Agent Token Endpoint** — n8n workflow `Dv0ZfV2HELCw7Ske`: AGENTS config table, validates creds, returns Twilio token + `clients` list | **DONE** (2026-03-15) |
-| 3 | **Agent Status Endpoint** — webhook to toggle per-client `agentOnline` in n8n static data | **NEXT** |
-| 4 | **Message Handler changes** — mode check (fetch attrs, skip AI if mode="agent"), author filter (also filter agent_*), pass per-client `agentAvailable` to AI, handoff trigger (check AI response for `action: "handoff"`, update attrs + add participant) | Not started |
+| 3 | **Agent Status Endpoint** — second webhook in Message Handler workflow, writes per-client `agentOnline[client_id]` to shared static data | **NEXT** |
+| 4 | **Message Handler changes** — mode check (fetch attrs, skip AI if mode="agent"), author filter (also filter agent_*), pass per-client `agentAvailable` to AI, handoff trigger (check AI response for `action: "handoff"`, update attrs + add participant + send system message) | Not started |
 | 5 | **Wire up** — AI system prompt with handoff instructions + agentAvailable logic, end-to-end test | Not started |
+| 6 | **Widget system messages** — small widget.js update: detect `author === "system"` in `messageAdded`, render as centered muted line instead of chat bubble (e.g. "── You've been connected to a live agent ──") | Not started |
 
 ### Future enhancements (after MVP)
+- Heartbeat auto-offline: agent.html pings every 2 min, auto-set offline after 5 min silence
 - Timeout fallback: auto-resolve if agent doesn't respond within X minutes
 - Per-agent identities with routing/assignment layer
 - Agent hours: per-client `agentHours` in ROUTING table for automatic scheduling
