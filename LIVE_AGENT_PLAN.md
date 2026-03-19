@@ -142,7 +142,9 @@ Dashboard approach (per message):
 
 ## Architecture — The Full Picture
 
-### Handoff Trigger (n8n Message Handler)
+### Handoff Trigger (AI Tool → Separate Webhook)
+
+The AI triggers handoff by calling a **tool** (webhook), not by returning a flag in its response. This keeps the Message Handler simple and works with any AI framework that supports function/tool calling.
 
 ```
 USER sends message in chat bubble
@@ -182,34 +184,30 @@ USER sends message in chat bubble
    +--------+---------+
             |
             v
-   Existing AI flow:
    Route to Client → Call AI Webhook (with agentAvailable param)
        |
-       v
-   +------------------+
-   | Check AI response|  AI returns { action: "handoff" } ?
-   | for handoff flag |  AND agentOnline is true?
-   +--------+---------+
+       v                              MEANWHILE (during AI processing):
+   AI processes message ──────────►  AI decides to hand off
+       |                              → AI calls tool: POST /webhook/trigger-handoff
+       |                                { conversationSid, client_id }
+       |                              → Handoff Webhook:
+       |                                1. Check agentOnline[client_id]
+       |                                2. Update attrs: mode="agent"
+       |                                3. Add agent as participant
+       |                                4. Return { success: true }
        |
-  +----+----+
-  |         |
-normal   handoff
-  |         |
-  v         v
-Send     +------------------+
-reply    | TRIGGER HANDOFF  |
-to       | 1. Update attrs  |  POST /Conversations/{sid} Attributes={"mode":"agent",...}
-user     |    mode="agent"  |
-         | 2. Add agent as  |  POST /Conversations/{sid}/Participants Identity="agent_support"
-         |    participant   |
-         | 3. Reply to user |  POST message: "Connecting you with support..."
-         |   "Connecting..."|
-         +------------------+
-                  |
-                  v
-         Agent's Twilio SDK fires "conversationAdded" event
-         → agent.html shows the new conversation automatically
+       v
+   AI returns text: "I'm connecting you with our support team."
+       |
+       v
+   Prepare Reply → Send Reply to Twilio (last bot message)
+       |
+       v
+   Agent's Twilio SDK fires "conversationAdded" event
+   → agent.html shows the new conversation automatically
 ```
+
+**Key insight:** The Message Handler does NOT parse the AI response for handoff flags. The AI calls the handoff webhook directly as a tool during its processing. The AI's text response naturally serves as the transition message.
 
 ### Agent Replies (No Bridge Needed)
 
@@ -335,29 +333,47 @@ All using `conversations.dublin.ie1.twilio.com` (IE1 region).
 
 ---
 
-## Handoff Triggers — AI Is the Sole Decision Maker
+## Handoff Triggers — AI Tool Approach
 
-**No keyword detection in Message Handler.** The client AI brain decides when to hand off, based on full conversation context. This is simpler (fewer nodes in Message Handler) and smarter (AI understands nuance, frustration, context — not just regex patterns).
+**No keyword detection in Message Handler. No response parsing either.** The AI triggers handoff by calling a tool (webhook) directly. This is the cleanest separation of concerns.
 
 ### How It Works
 
 1. Message Handler passes `agentAvailable: true/false` to the client AI webhook (alongside the message)
-2. The AI system prompt includes handoff instructions:
-   > "You have access to a live agent handoff feature. The `agentAvailable` parameter tells you whether a human agent is currently online.
-   > - If the user needs human help AND `agentAvailable` is true: include `"action": "handoff"` in your response
-   > - If the user needs human help AND `agentAvailable` is false: tell the user that live support is not available right now and suggest trying during working hours
-   > - Use your judgement: explicit requests ('talk to a human'), repeated failures, frustrated users, or questions outside your knowledge are all valid handoff reasons"
-3. Message Handler checks AI response for the handoff flag in Prepare Reply node
-4. If `action: "handoff"` → trigger handoff (update attrs, add agent participant, notify user)
-5. If normal response → send reply as usual
+2. The AI has a **tool** configured: `trigger_handoff` → calls `POST /webhook/trigger-handoff`
+3. AI system prompt includes handoff instructions:
+   > "You have a `trigger_handoff` tool. The `agentAvailable` parameter tells you whether a human agent is currently online.
+   > - If the user needs human help AND `agentAvailable` is true: call the `trigger_handoff` tool, then tell the user you're connecting them
+   > - If the user needs human help AND `agentAvailable` is false: tell the user that live support is not available right now
+   > - Use your judgement: explicit requests, repeated failures, frustrated users, or questions outside your knowledge are all valid handoff reasons"
+4. When AI calls the tool → handoff webhook fires → updates conversation mode + adds agent
+5. AI returns text response: "I'm connecting you with our support team." → sent as last bot message
 
-### Why No Keyword Detection
+### Why Tool Instead of Response Parsing
 
-- AI has full conversation context — understands "I'm done with this bot" without matching a regex
-- AI respects `agentAvailable` — won't trigger handoff when agent is offline, instead responds gracefully
-- Fewer nodes in Message Handler = simpler workflow
-- One decision maker, not two competing layers
-- AI can handle nuanced cases that keywords miss (frustration, repeated confusion, off-topic questions)
+- **Message Handler stays simple** — no parsing AI response for flags, no conditional branching after AI call
+- **AI's text IS the transition message** — no separate system message needed
+- **Works with any AI framework** — n8n AI agents, OpenAI function calling, Anthropic tool use all support tools natively
+- **Each client configures it themselves** — we provide the webhook URL, they add it as a tool in their AI setup
+- **Separation of concerns** — handoff trigger is its own workflow, not tangled into Message Handler
+
+### Handoff Trigger Webhook (new small workflow)
+
+```
+POST /webhook/trigger-handoff
+Body: { "conversationSid": "CH...", "client_id": "alkoholcz" }
+
+→ Read agentOnline[client_id] from static data (or own check)
+→ If offline: return { success: false, error: "Agent not available" }
+→ If online:
+    1. Update conversation attributes: { mode: "agent", handoff_at: "...", client_id: "..." }
+    2. Add agent as participant: Identity = "agent_{client_id}"
+    3. Return { success: true }
+```
+
+- Tiny workflow: ~4-5 nodes (Webhook → Validate → Update Attrs → Add Participant → Respond)
+- Needs Twilio API auth (same Basic auth as Message Handler)
+- The AI gets `{ success: true/false }` back and responds to the user accordingly
 
 ### Future: Failure Counter (automatic)
 
@@ -508,34 +524,45 @@ const AGENTS = {
 
 ### Modified: Message Handler (existing workflow)
 
-Add nodes after Guardrails:
+Add nodes after Guardrails + add second webhook trigger for agent status:
 
 ```
+Entry 1 — Message processing:
 ... Guardrails → Is Safe?
   → true: Fetch Conversation Attrs (HTTP GET to Twilio) → Parse Mode + Agent Status (Code)
     → Is Agent Mode? (If)
       → true: STOP (do nothing — agent communicates via SDK)
-      → false: Route to Client → Call AI (with agentAvailable param) → Check AI Handoff Flag (Code)
-        → handoff AND agentOnline: Trigger Handoff (Code+HTTP: update attrs, add participant, notify user)
-        → normal: Prepare Reply → Send to Twilio (existing)
+      → false: Route to Client → Call AI (with agentAvailable param) → Prepare Reply → Send to Twilio
+  → false: Prepare Safe Reply → Send to Twilio
+
+Entry 2 — Agent status toggle:
+Agent Status Webhook → Update Static Data (Code) → Respond OK
 ```
 
-New nodes needed: ~3-4 (Fetch Attrs, Parse Mode + Status, Is Agent Mode?, Trigger Handoff)
+New nodes needed for message path: ~3 (Fetch Attrs, Parse Mode + Status, Is Agent Mode?)
+New nodes needed for status path: ~3 (Webhook, Update Code, Respond)
+
+**No handoff trigger logic in Message Handler** — the AI calls a separate webhook (tool) to trigger handoff.
 
 ### Modified: Message Handler — Author Filter
 
 Current: filters `Author != "bot"`
 Updated: filters `Author != "bot" AND Author != "agent_*"` (prevent agent messages from triggering AI)
 
-### New: Agent Token Endpoint (small workflow)
+### Done: Agent Token Endpoint (`Dv0ZfV2HELCw7Ske`)
 
-Simple webhook that validates agent credentials and returns a Twilio Access Token. Reuses JWT/HMAC logic from existing Token Endpoint.
+Deployed and working. Validates agent credentials (AGENTS table), returns Twilio Access Token + allowed clients list.
+
+### New: Handoff Trigger Webhook (small workflow)
+
+Called by AI as a tool when it decides to hand off. Updates conversation attrs + adds agent participant. ~4-5 nodes.
 
 ### NOT Needed (eliminated by this architecture)
 
 - ~~Slack → Twilio Bridge workflow~~ (agent uses SDK directly)
 - ~~Resolve Handler workflow~~ (agent resolves via SDK)
 - ~~Slack app setup~~ (no Slack dependency)
+- ~~Handoff response parsing in Message Handler~~ (AI calls tool directly)
 
 ---
 
@@ -630,9 +657,10 @@ The summary workflow can distinguish AI vs human portions: "AI handled the first
 | 1 | **agent.html** — dashboard page: login, conversation list, chat, resolve, on/off toggle, browser notifications, demo mode (`?demo`), per-client filtering via `allowedClients` | **DONE** (2026-03-15) |
 | 2 | **Agent Token Endpoint** — n8n workflow `Dv0ZfV2HELCw7Ske`: AGENTS config table, validates creds, returns Twilio token + `clients` list | **DONE** (2026-03-15) |
 | 3 | **Agent Status Endpoint** — second webhook in Message Handler workflow, writes per-client `agentOnline[client_id]` to shared static data | **NEXT** |
-| 4 | **Message Handler changes** — mode check (fetch attrs, skip AI if mode="agent"), author filter (also filter agent_*), pass per-client `agentAvailable` to AI, handoff trigger (check AI response for `action: "handoff"`, update attrs + add participant + send system message) | Not started |
-| 5 | **Wire up** — AI system prompt with handoff instructions + agentAvailable logic, end-to-end test | Not started |
-| 6 | **Widget system messages** — small widget.js update: detect `author === "system"` in `messageAdded`, render as centered muted line instead of chat bubble (e.g. "── You've been connected to a live agent ──") | Not started |
+| 4 | **Message Handler changes** — mode check (fetch attrs, skip AI if mode="agent"), author filter (also filter agent_*), pass per-client `agentAvailable` to AI. No handoff parsing needed. | Not started |
+| 5 | **Handoff Trigger Webhook** — new small workflow called by AI as a tool: validates, checks agentOnline, updates conversation attrs, adds agent participant | Not started |
+| 6 | **Wire up** — AI system prompt with handoff instructions + `trigger_handoff` tool configured in client AI, end-to-end test | Not started |
+| 7 | **Widget system messages** — small widget.js update: detect `author === "system"` in `messageAdded`, render as centered muted line instead of chat bubble (e.g. "── You've been connected to a live agent ──") | Not started |
 
 ### Future enhancements (after MVP)
 - Heartbeat auto-offline: agent.html pings every 2 min, auto-set offline after 5 min silence
