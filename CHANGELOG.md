@@ -1,5 +1,16 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-04-06 — Auto-open feature
+
+### Widget (widget.js)
+- New `data-auto-open` attribute: when present, widget automatically opens after a delay (default 2s)
+- New `data-auto-open-delay` attribute: configurable delay in milliseconds
+- Dismissed state persisted in `localStorage` (`cb_dismissed_{clientId}`) — once user closes the chat, auto-open never triggers again
+- Backwards compatible: existing clients without `data-auto-open` see zero behavior change
+- Edge cases handled: user opens before timer (skipped), user clicks bubble before timer (cancelled), localStorage unavailable (graceful fallback)
+
+---
+
 ## 2026-04-05 — New client: Pompo.cz
 
 ### New client onboarded: Pompo.cz (client_id: `pompo`)

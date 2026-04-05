@@ -28,7 +28,8 @@ n8n Workflows:
 - **No build step**: `widget.js` is a single vanilla JS file, no bundler, no framework
 - **Shadow DOM**: closed mode for CSS isolation from host page
 - **Twilio SDK loaded dynamically** from CDN at runtime
-- **Configuration via `data-*` attributes**: `data-webhook`, `data-theme`, `data-color`, `data-title`, `data-logo`, `data-client-key`, `data-client-id`
+- **Configuration via `data-*` attributes**: `data-webhook`, `data-theme`, `data-color`, `data-title`, `data-logo`, `data-client-key`, `data-client-id`, `data-auto-open`, `data-auto-open-delay`
+- **Auto-open**: opt-in via `data-auto-open` attribute. Opens widget after delay (default 2s, configurable via `data-auto-open-delay`). Dismissed state persisted in `localStorage` (`cb_dismissed_{clientId}`) — once user closes, auto-open never triggers again.
 - **Theming system**: External CSS files in `themes/` loaded via `data-theme` attribute. CSS custom properties (`--cb-*`) on `:host`. `data-color` overrides primary color on top of any theme.
 - **Multi-client, single codebase**: one `widget.js`, one Token Endpoint, one Message Handler. Client routing via `client_id` in identity prefix. See `CHAT_BUBBLE_PLAN.md` for details.
 - **Separation of concerns**: chat bubble = reusable transport layer, client project = AI brain with knowledge base. Message Handler routes to client-specific AI webhook.

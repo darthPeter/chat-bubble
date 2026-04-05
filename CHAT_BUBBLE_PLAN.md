@@ -252,6 +252,58 @@ GET /v1/Services/{ServiceSid}/Conversations/{ConversationSid}/Messages
 
 ---
 
+## Auto-Open Feature
+
+### Goal
+
+Automatically open the chat widget after a configurable delay to increase engagement. Opt-in via `data-auto-open` attribute — existing clients see zero behavior change.
+
+### New Attributes
+
+| Attribute | Type | Default | Description |
+|---|---|---|---|
+| `data-auto-open` | boolean (presence) | off | Enable auto-open on page load |
+| `data-auto-open-delay` | ms (integer) | `2000` | Delay before auto-opening |
+
+### Behavior
+
+1. Page loads → timer starts (default 2s)
+2. Timer fires → widget opens automatically (same as clicking the bubble)
+3. User closes chat (X button) → dismissed flag saved to `localStorage` (`cb_dismissed_{clientId}`)
+4. Next page load → dismissed flag exists → skip auto-open, show bubble only
+5. New conversation button does NOT set dismissed flag
+6. Dismissed flag never expires (permanent until browser data cleared)
+
+### Backwards Compatibility
+
+- `scriptTag.hasAttribute("data-auto-open")` returns `false` when absent → entire feature gated, completely inert
+- No existing code paths modified — all changes additive
+- `localStorage` previously unused by widget — no key conflicts
+- `btnClose` wrapper only writes localStorage when `CFG.autoOpen` is `true`
+
+### Edge Cases
+
+- **User opens chat before timer**: `if (!isOpen)` guard in setTimeout callback
+- **User clicks bubble before timer**: `clearTimeout` via `{ once: true }` listener
+- **localStorage unavailable** (private browsing): `try/catch`, defaults to "not dismissed"
+
+### Embed Example
+
+```html
+<script
+  src="https://darthpeter.github.io/chat-bubble/widget.js"
+  data-webhook="..."
+  data-theme="pompo"
+  data-title="Pompo.cz"
+  data-client-id="pompo"
+  data-client-key="..."
+  data-auto-open
+  data-auto-open-delay="3000"
+></script>
+```
+
+---
+
 ## TODO
 
 - [x] **Multi-client architecture** — shared routing deployed (2026-03-12)

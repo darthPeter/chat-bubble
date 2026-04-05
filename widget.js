@@ -11,6 +11,8 @@
     clientKey: scriptTag.getAttribute("data-client-key") || "",
     clientId: scriptTag.getAttribute("data-client-id") || "",
     theme: scriptTag.getAttribute("data-theme") || "",
+    autoOpen: scriptTag.hasAttribute("data-auto-open"),
+    autoOpenDelay: parseInt(scriptTag.getAttribute("data-auto-open-delay"), 10) || 2000,
   };
 
   // ── Identity helper (client-namespaced when client-id is set) ────
@@ -43,6 +45,7 @@
 
   // ── Session persistence ────────────────────────────────────────────
   const SESSION_KEY = CFG.clientId ? `cb_session_${CFG.clientId}` : "cb_session";
+  const DISMISSED_KEY = CFG.clientId ? `cb_dismissed_${CFG.clientId}` : "cb_dismissed";
 
   function loadSession() {
     try {
@@ -669,7 +672,12 @@
 
   // ── Event listeners ────────────────────────────────────────────────
   btnToggle.addEventListener("click", toggleChat);
-  btnClose.addEventListener("click", toggleChat);
+  btnClose.addEventListener("click", () => {
+    toggleChat();
+    if (!isOpen && CFG.autoOpen) {
+      try { localStorage.setItem(DISMISSED_KEY, "1"); } catch {}
+    }
+  });
   btnNew.addEventListener("click", newConversation);
 
   btnSend.addEventListener("click", sendMessage);
@@ -679,4 +687,16 @@
       sendMessage();
     }
   });
+
+  // ── Auto-open ──────────────────────────────────────────────────────
+  if (CFG.autoOpen) {
+    let dismissed = false;
+    try { dismissed = !!localStorage.getItem(DISMISSED_KEY); } catch {}
+    if (!dismissed) {
+      const autoOpenTimer = setTimeout(() => {
+        if (!isOpen) toggleChat();
+      }, CFG.autoOpenDelay);
+      btnToggle.addEventListener("click", () => clearTimeout(autoOpenTimer), { once: true });
+    }
+  }
 })();
