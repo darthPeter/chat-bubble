@@ -1,5 +1,41 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-04-05 — New client: Pompo.cz
+
+### New client onboarded: Pompo.cz (client_id: `pompo`)
+Czech toy e-commerce site (hračky online). Third client on the platform.
+
+### New files
+- `themes/pompo.css` — Pompo brand theme: red primary (#e63946), blue accent (#457b9d), clean sans-serif, gradient header
+- `demo-pompo.html` — test page with pompo.cz in iframe background + chat widget
+
+### Token Endpoint (`ODrNXQASOPNObSWd`)
+- Added `pompo` to `CLIENTS` config table with unique client key
+
+### Message Handler (`wnHbfZ7Djko2G4HZ`)
+- Added `pompo` to `ROUTING` config table → AI webhook: `/webhook/f305ec84-10a9-49c9-a0dc-edc58b4818db`
+- Auth: shared `GlobalChatbot` credential (same as all clients)
+
+### Documentation
+- Updated `CLAUDE.md` — Active Clients table, files list, redacted placeholders
+- Updated `CHAT_BUBBLE_PLAN.md` — TODO checklist
+- Updated workflow backups in `workflows/`
+
+### Embed tag
+```html
+<script
+  src="https://darthpeter.github.io/chat-bubble/widget.js"
+  data-webhook="https://n8n.srv1104100.hstgr.cloud/webhook/chat-token"
+  data-theme="pompo"
+  data-title="Pompo.cz"
+  data-logo="https://data.pompo.cz/templates/images/logo.svg"
+  data-client-key="cb5b910b75f235a374b6f9b1b4956790593aef05c8d5f5c9"
+  data-client-id="pompo"
+></script>
+```
+
+---
+
 ## 2026-03-15 — Fix alkohol.cz mobile fullscreen
 
 ### Theme (themes/alkoholcz.css)

@@ -1,8 +1,8 @@
 # Live Agent Handoff — Architecture & Plan
 
-> **Status:** In progress — Step 1 (agent.html) done, Step 2 (Agent Token Endpoint) next
+> **Status:** In progress — Steps 1-2 done, Step 3 (Agent Status Endpoint) next
 > **Date:** 2026-03-14
-> **Last revised:** 2026-03-15 — agent.html built, added per-client agent isolation + AGENTS config table
+> **Last revised:** 2026-03-15 — agent.html built, Agent Token Endpoint deployed, added per-client agent isolation + AGENTS config table
 
 ---
 

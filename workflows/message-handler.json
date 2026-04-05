@@ -1,9 +1,9 @@
 {
   "_backup": {
-    "date": "2026-03-15",
-    "version": 45,
+    "date": "2026-04-05",
+    "version": 48,
     "source": "n8n MCP",
-    "note": "Pre-handoff baseline — before adding agent status endpoint and handoff logic"
+    "note": "Pompo added to ROUTING table"
   },
   "id": "wnHbfZ7Djko2G4HZ",
   "name": "Chat — Message Handler",
@@ -109,7 +109,7 @@
       "typeVersion": 2,
       "position": [1440, 304],
       "parameters": {
-        "jsCode": "// ── Client routing table ───────────────────────────────────\n// Add new clients here. Each entry maps to an AI webhook.\nconst ROUTING = {\n  digishares: {\n    webhookUrl: '__AI_WEBHOOK_URL_DIGISHARES__',\n    authToken: '__AI_AUTH_TOKEN_DIGISHARES__',\n  },\n  alkoholcz: {\n    webhookUrl: '__AI_WEBHOOK_URL_ALKOHOLCZ__',\n    authToken: '__AI_AUTH_TOKEN_ALKOHOLCZ__',\n  },\n};\n\n// Parse client_id from author identity: 'digishares_user_xxx' → 'digishares'\n// Backwards compat: 'user_xxx' (no prefix) → 'digishares'\nconst author = $json.author || '';\nconst clientId = author.includes('_user_')\n  ? author.split('_user_')[0]\n  : 'digishares';\n\nconst route = ROUTING[clientId];\n\nif (!route) {\n  // Unknown client — drop silently (don't crash the workflow)\n  return [];\n}\n\nreturn [{ json: { ...$json, clientId, webhookUrl: route.webhookUrl, authToken: route.authToken } }];"
+        "jsCode": "// ── Client routing table ───────────────────────────────────\n// Add new clients here. Each entry maps to an AI webhook.\nconst ROUTING = {\n  digishares: {\n    webhookUrl: '__AI_WEBHOOK_URL_DIGISHARES__',\n    authToken: '__AI_AUTH_TOKEN_DIGISHARES__',\n  },\n  alkoholcz: {\n    webhookUrl: '__AI_WEBHOOK_URL_ALKOHOLCZ__',\n    authToken: '__AI_AUTH_TOKEN_ALKOHOLCZ__',\n  },\n  pompo: {\n    webhookUrl: '__AI_WEBHOOK_URL_POMPO__',\n    authToken: '',\n  },\n};\n\n// Parse client_id from author identity: 'digishares_user_xxx' → 'digishares'\n// Backwards compat: 'user_xxx' (no prefix) → 'digishares'\nconst author = $json.author || '';\nconst clientId = author.includes('_user_')\n  ? author.split('_user_')[0]\n  : 'digishares';\n\nconst route = ROUTING[clientId];\n\nif (!route) {\n  // Unknown client — drop silently (don't crash the workflow)\n  return [];\n}\n\nreturn [{ json: { ...$json, clientId, webhookUrl: route.webhookUrl, authToken: route.authToken } }];"
       }
     },
     {

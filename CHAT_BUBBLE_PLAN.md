@@ -256,10 +256,48 @@ GET /v1/Services/{ServiceSid}/Conversations/{ConversationSid}/Messages
 
 - [x] **Multi-client architecture** — shared routing deployed (2026-03-12)
 - [x] **Message guardrails** — prompt injection, jailbreak, abuse filtering (deployed 2026-03-12)
-- [ ] **New client onboarding** — theme + test page + routing for 2 new clients
+- [ ] **Dev/production separation** — set up before finishing live agent. See plan below.
+- [x] **New client: Pompo.cz** — theme + test page + routing deployed (2026-04-05)
+- [ ] **New client onboarding** — theme + test page + routing for additional clients
 - [ ] **Post-conversation webhook** — Twilio inactivity timer + transcript workflow + per-client analysis routing
   - [x] Verify `onConversationStateUpdated` payload — confirmed: sends `ConversationSid`, `FriendlyName`, `State` (2026-03-13)
   - [ ] Set `Timers.Inactive` on Create Conversation in Token Endpoint
   - [ ] Add `onConversationStateUpdated` to Twilio Service webhook filters
   - [ ] Build "Chat — Post-Conversation Analysis" workflow with client routing
-- [ ] **(Future) Live agent handoff** — Slack as agent backend, keyword + AI escalation triggers. Separate plan: [`LIVE_AGENT_PLAN.md`](LIVE_AGENT_PLAN.md) (brainstorming, not part of the project yet)
+- [ ] **Live agent handoff** — in progress, steps 1-2 done. Separate plan: [`LIVE_AGENT_PLAN.md`](LIVE_AGENT_PLAN.md)
+
+---
+
+## Dev/Production Separation Plan
+
+> **Priority:** Do this before finishing live agent (steps 3-7) — increasingly important as clients go to real production.
+
+### Problem
+
+Every push to `main` instantly updates the live widget on GitHub Pages. No buffer between active development and what clients see. Risky once we're live in production.
+
+### Solution: Git Branching
+
+- **`main` = production** — what GitHub Pages serves, what clients load. Only merge here when releasing a stable version.
+- **`dev` = active development** — all work happens here (live agent features, experiments, etc.)
+
+### Frontend Workflow
+
+1. Create `dev` branch from current `main`
+2. All development work on `dev`
+3. Test locally: `python3 -m http.server` (or `npx serve`) + demo pages
+4. When stable → merge `dev` into `main` → production updates
+5. Tag releases on `main` for version tracking (e.g. `v1.0`, `v1.1`)
+
+### Backend (n8n) Workflow
+
+- **Shared backend for now** — most live agent work is frontend-side, n8n workflows stay untouched
+- **When backend changes needed:** duplicate workflows as "DEV" variants with separate webhook paths (`/webhook/chat-token-dev`, `/webhook/chat-message-dev`), dev demo pages point to dev endpoints
+- **Merge to production:** update the real workflows, test, then merge frontend to `main`
+
+### Setup Steps
+
+- [ ] Create `dev` branch from current `main`
+- [ ] Verify GitHub Pages still serves from `main` only
+- [ ] Update CLAUDE.md with branching rules (all dev on `dev`, merge to `main` = release)
+- [ ] (Optional) Set up branch protection on `main` to prevent accidental direct pushes

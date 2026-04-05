@@ -1,0 +1,51 @@
+:host {
+  /* Colors — Pompo.cz brand (toy store, playful & clean) */
+  --cb-color-primary: #e63946;
+  --cb-color-primary-hover: #d62839;
+  --cb-color-on-primary: #fff;
+  --cb-color-accent: #457b9d;
+  --cb-color-surface: #fff;
+  --cb-color-surface-alt: #f8f9fa;
+  --cb-color-border: #dee2e6;
+  --cb-color-text: #333;
+  --cb-color-text-secondary: #666;
+
+  /* Floating button */
+  --cb-btn-size: 60px;
+  --cb-btn-size-mobile: 54px;
+  --cb-btn-radius: 50%;
+  --cb-btn-shadow: 0 4px 16px rgba(230,57,70,.35);
+  --cb-btn-shadow-hover: 0 6px 24px rgba(230,57,70,.45);
+
+  /* Window */
+  --cb-window-radius: 16px;
+  --cb-window-shadow: 0 10px 40px rgba(0,0,0,.18);
+  --cb-window-width: 380px;
+  --cb-window-height: 520px;
+
+  /* Header — red gradient matching Pompo brand */
+  --cb-header-bg: linear-gradient(135deg, #e63946, #c1121f);
+  --cb-header-color: #fff;
+  --cb-header-padding: 16px 18px;
+
+  /* Messages */
+  --cb-msg-radius: 14px;
+  --cb-msg-bot-bg: #fff;
+  --cb-msg-bot-color: var(--cb-color-text);
+  --cb-msg-bot-border: 1px solid var(--cb-color-border);
+  --cb-msg-user-bg: #e63946;
+  --cb-msg-user-color: #fff;
+
+  /* Input */
+  --cb-input-radius: 22px;
+  --cb-input-border: #dee2e6;
+  --cb-input-focus-border: #457b9d;
+
+  /* Send button */
+  --cb-send-bg: #e63946;
+  --cb-send-color: #fff;
+
+  /* Typography */
+  --cb-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --cb-font-size: 14px;
+}
