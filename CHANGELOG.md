@@ -9,6 +9,9 @@
 - Backwards compatible: existing clients without `data-auto-open` see zero behavior change
 - Edge cases handled: user opens before timer (skipped), user clicks bubble before timer (cancelled), localStorage unavailable (graceful fallback)
 
+### Pompo demo (demo-pompo.html)
+- Enabled `data-auto-open` — chat opens automatically after 2s on the demo page
+
 ---
 
 ## 2026-04-05 — New client: Pompo.cz
