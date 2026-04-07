@@ -339,7 +339,8 @@ Would you like more details?
 | `name` | yes | Product name (minimum for a card to render) |
 | `price` | no | Display price (any format — "1 299 Kč", "$29.99") |
 | `image` | no | Product image URL |
-| `url` | no | Product page link (renders "View" button) |
+| `url` | no | Product page link (renders button) |
+| `button` | no | Button label (default "View ›", e.g. "Zobrazit" for Czech) |
 
 **Why bracket syntax (not JSON, HTML, or Twilio attributes):**
 - `[product]` survives `formatBotMessage()` HTML escaping (brackets aren't escaped)

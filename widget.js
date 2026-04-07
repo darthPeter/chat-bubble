@@ -461,7 +461,7 @@
 
         const fields = {};
         match[1].split("\n").forEach((line) => {
-          const m = line.match(/^\s*(name|price|image|url)\s*:\s*(.+)/i);
+          const m = line.match(/^\s*(name|price|image|url|button)\s*:\s*(.+)/i);
           if (m) fields[m[1].toLowerCase()] = m[2].trim();
         });
 
@@ -493,7 +493,7 @@
       : "";
     const price = p.price ? `<div class="cb-product-price">${escapeHTML(p.price)}</div>` : "";
     const btn = p.url
-      ? `<a class="cb-product-btn" href="${escapeHTML(p.url)}" target="_blank" rel="noopener">View ›</a>`
+      ? `<a class="cb-product-btn" href="${escapeHTML(p.url)}" target="_blank" rel="noopener">${escapeHTML(p.button || "View ›")}</a>`
       : "";
     return `<div class="cb-product-card">${img}<div class="cb-product-info"><div class="cb-product-name">${escapeHTML(p.name)}</div>${price}${btn}</div></div>`;
   }
