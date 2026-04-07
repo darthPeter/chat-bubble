@@ -260,14 +260,16 @@
     .cb-product-card{
       align-self:flex-start;max-width:80%;
       border:1px solid var(--cb-color-border);border-radius:10px;
-      overflow:hidden;background:var(--cb-color-surface);
+      background:var(--cb-color-surface);
       border-bottom-left-radius:4px;
       font-family:var(--cb-font-family);font-size:var(--cb-font-size);
       animation:cb-msgIn .3s ease-out both;
+      flex-shrink:0;
     }
     .cb-product-img{
       width:100%;max-height:160px;object-fit:cover;display:block;
       background:var(--cb-color-surface-alt);
+      border-radius:10px 10px 0 0;
     }
     .cb-product-info{
       padding:10px 12px;
