@@ -304,6 +304,151 @@ Automatically open the chat widget after a configurable delay to increase engage
 
 ---
 
+## Product Cards (E-commerce)
+
+### Goal
+
+When the AI bot recommends products, render them as rich, styled cards (image, name, price, link) instead of plain text. Increases click-through for e-commerce clients (Pompo.cz, Alkohol.cz). Fully backwards compatible — no cards if format not used.
+
+### Format Spec
+
+The AI brain includes product data in the message body using bracket syntax:
+
+```
+Here are my top picks:
+
+[product]
+name: LEGO Star Wars X-Wing
+price: 1 299 Kč
+image: https://pompo.cz/images/lego-xwing.jpg
+url: https://pompo.cz/lego-star-wars-xwing
+[/product]
+
+[product]
+name: Hot Wheels Track Builder
+price: 899 Kč
+url: https://pompo.cz/hot-wheels-track
+[/product]
+
+Would you like more details?
+```
+
+**Fields:**
+| Field | Required | Description |
+|---|---|---|
+| `name` | yes | Product name (minimum for a card to render) |
+| `price` | no | Display price (any format — "1 299 Kč", "$29.99") |
+| `image` | no | Product image URL |
+| `url` | no | Product page link (renders "View" button) |
+
+**Why bracket syntax (not JSON, HTML, or Twilio attributes):**
+- `[product]` survives `formatBotMessage()` HTML escaping (brackets aren't escaped)
+- Key-value pairs are what LLMs generate most reliably
+- Field order doesn't matter, case-insensitive matching
+- Human-readable fallback if parsing fails
+- Zero backend/Twilio changes needed
+
+### Parsing Flow
+
+```
+Bot message arrives → appendMessage()
+  → Scan for [product]...[/product] blocks
+  → If found:
+    Split into segments: text + product cards (interleaved)
+    Render text segments via formatBotMessage()
+    Render product cards as styled HTML
+    Combine in order
+  → If not found:
+    Existing formatBotMessage() behavior (zero change)
+  → If parsing fails:
+    Entire message rendered as plain text (graceful fallback)
+```
+
+### Fallback Layers (fool-proof)
+
+| Failure | What happens |
+|---|---|
+| No `[product]` markers | Existing behavior, zero change |
+| Unclosed `[/product]` | Treat rest as text, no card |
+| Missing `name` field | Skip that card, render block as text |
+| Missing `image` | Card without image (name + price + button) |
+| Missing `price` | Card without price |
+| Missing `url` | Card without button (informational only) |
+| Broken image URL | `onerror` handler hides image element |
+| XSS in field values | HTML-escape all values before inserting |
+| Completely garbled | Entire message as plain text |
+
+### Card Rendering
+
+- Styled using existing `--cb-*` CSS custom properties → automatically matches each client's theme
+- Vertical stack layout (380px window too narrow for horizontal carousel)
+- Image: constrained height, `object-fit: cover`, `onerror` fallback
+- Name: bold, truncated if too long
+- Price: styled with theme primary color
+- "View" button: links to `url`, opens in new tab (`target="_blank"`)
+- Mobile: cards stretch full width
+
+### Backwards Compatibility
+
+**No opt-in attribute needed.** The feature is inherently backwards compatible:
+- No `[product]` blocks → parser does nothing → zero behavior change
+- Existing AI brains send plain text → no cards rendered
+- Only when client AI brain is prompted to use the format do cards appear
+- Widget code change is additive (new parse function + hook into `appendMessage`)
+
+### What Doesn't Change
+
+- **n8n workflows**: zero changes — product data lives in AI response text
+- **Twilio**: zero changes — just message body
+- **Existing themes**: cards inherit `--cb-*` variables
+- **Message Handler**: bot responses pass through untruncated (2000 char limit is user input only)
+
+### LLM Prompting
+
+Client's AI system prompt needs:
+> "When recommending products, format each as a `[product]` block with fields `name:`, `price:`, `image:`, `url:`, closed with `[/product]`. You can include regular text before and after product blocks."
+
+This is per-client AI brain config, not widget code.
+
+### Implementation Plan
+
+**All changes in `widget.js` only (~80-120 lines):**
+
+1. **New function `parseProductCards(text)`** (~30 lines)
+   - Regex: `/\[product\]([\s\S]*?)\[\/product\]/gi`
+   - Extract key-value pairs from each match (case-insensitive)
+   - Validate: skip cards without `name`
+   - Return array of `{ before, card }` segments + trailing text
+   - Wrap in try/catch → return `null` on any failure
+
+2. **New function `renderProductCard(product)`** (~15 lines)
+   - Build HTML: image (optional) + name + price (optional) + button (optional)
+   - HTML-escape all field values
+   - Image gets `onerror="this.style.display='none'"`
+
+3. **Modify `appendMessage(text, sender)`** (~10 lines)
+   - When `sender === "bot"`: try `parseProductCards(text)` first
+   - If returns segments: build mixed HTML (text + cards)
+   - If returns null: fall through to existing `formatBotMessage(text)`
+
+4. **New CSS** (~40 lines)
+   - `.cb-product-card` — border, radius, overflow, margin
+   - `.cb-product-img` — constrained height, cover fit
+   - `.cb-product-info` — padding, layout
+   - `.cb-product-name` — bold, truncate
+   - `.cb-product-price` — theme color
+   - `.cb-product-btn` — styled link button
+   - All using `var(--cb-*)` for theming
+
+### Estimated Effort
+
+- ~80-120 lines in widget.js (parser + renderer + CSS)
+- Zero backend changes
+- Zero workflow changes
+- Works for any e-commerce client, inert for non-ecom
+
+---
+
 ## TODO
 
 - [x] **Multi-client architecture** — shared routing deployed (2026-03-12)
@@ -316,6 +461,7 @@ Automatically open the chat widget after a configurable delay to increase engage
   - [ ] Set `Timers.Inactive` on Create Conversation in Token Endpoint
   - [ ] Add `onConversationStateUpdated` to Twilio Service webhook filters
   - [ ] Build "Chat — Post-Conversation Analysis" workflow with client routing
+- [ ] **Product cards** — rich product display for e-commerce clients. See plan above.
 - [ ] **Live agent handoff** — in progress, steps 1-2 done. Separate plan: [`LIVE_AGENT_PLAN.md`](LIVE_AGENT_PLAN.md)
 
 ---
