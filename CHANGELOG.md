@@ -4,9 +4,10 @@
 
 ### Widget (widget.js)
 - Rich product cards rendered when AI bot uses `[product]...[/product]` format in responses
-- Fields: `name` (required), `price`, `image`, `url` — missing fields gracefully omitted
+- Fields: `name` (required), `price`, `image`, `url`, `button` — missing fields gracefully omitted
+- `button` field: optional label for the CTA button (default "View ›"). Enables i18n — Czech bots use `button: Zobrazit`, etc.
 - Cards styled with existing `--cb-*` CSS custom properties — automatically matches each client's theme
-- Image with `onerror` fallback, "View" button opens product URL in new tab
+- Image with `onerror` fallback, button opens product URL in new tab
 - Fully backwards compatible: no `[product]` markers = zero behavior change
 - Fool-proof: broken format falls back to plain text, XSS-safe (all values HTML-escaped)
 - Supports interleaved text and product cards in the same message

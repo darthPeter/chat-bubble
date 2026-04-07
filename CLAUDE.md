@@ -37,7 +37,7 @@ n8n Workflows:
 - **Session persistence**: identity + conversation_sid in `sessionStorage` (namespaced by client_id). Restores on refresh, loads message history. New conversation button resets.
 - **Welcome message**: widget sends `[system] generate welcome message` on new conversations — AI generates greeting. Skipped on session restore.
 - **Bot markdown**: lightweight formatter renders `\n`, `**bold**`, `*italic*`, and clickable URLs in bot messages. HTML escaped first for XSS safety.
-- **Product cards**: `[product]...[/product]` blocks in bot messages render as rich cards (image, name, price, link). Fields: `name` (required), `price`, `image`, `url`. Backwards compatible — no markers = plain text. See `CHAT_BUBBLE_PLAN.md` for format spec.
+- **Product cards**: `[product]...[/product]` blocks in bot messages render as rich cards (image, name, price, link). Fields: `name` (required), `price`, `image`, `url`, `button` (label, default "View ›"). Backwards compatible — no markers = plain text. See `CHAT_BUBBLE_PLAN.md` for format spec.
 
 ## Repo & Hosting
 
