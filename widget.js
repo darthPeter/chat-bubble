@@ -257,22 +257,29 @@
     .cb-status-banner.visible{display:block}
 
     /* ── Product cards ───────────────────────────────────── */
+    .cb-msg-card{
+      padding:0 !important;border:1px solid var(--cb-color-border) !important;
+      border-radius:10px !important;overflow:hidden;
+      background:var(--cb-color-surface) !important;
+      border-bottom-left-radius:4px !important;
+    }
     .cb-product-card{
-      border:1px solid var(--cb-color-border);border-radius:10px;
-      overflow:hidden;background:var(--cb-color-surface);
+      display:block;
     }
     .cb-product-img{
-      width:100%;height:140px;object-fit:cover;display:block;
+      width:100%;max-height:160px;object-fit:cover;display:block;
       background:var(--cb-color-surface-alt);
     }
-    .cb-product-info{padding:10px 12px}
+    .cb-product-info{
+      padding:10px 12px;display:block;
+    }
     .cb-product-name{
       font-weight:600;font-size:var(--cb-font-size);
       line-height:1.3;margin-bottom:4px;
-      color:var(--cb-color-text);
+      color:var(--cb-color-text);display:block;
     }
     .cb-product-price{
-      font-size:13px;font-weight:600;
+      font-size:13px;font-weight:600;display:block;
       color:var(--cb-color-primary);margin-bottom:8px;
     }
     .cb-product-btn{
@@ -283,12 +290,6 @@
       transition:opacity .15s;
     }
     .cb-product-btn:hover{opacity:.85}
-    .cb-msg.bot .cb-product-card{border:none}
-    .cb-msg.bot:has(.cb-product-card){
-      padding:0;border:1px solid var(--cb-color-border);
-      border-radius:10px;overflow:hidden;background:var(--cb-color-surface);
-      border-bottom-left-radius:4px;
-    }
 
     /* ── Scrollbar ────────────────────────────────────────── */
     .cb-messages::-webkit-scrollbar{width:6px}
@@ -489,7 +490,7 @@
 
   function renderProductCard(p) {
     const img = p.image
-      ? `<img class="cb-product-img" src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" onerror="this.style.display='none'">`
+      ? `<img class="cb-product-img" src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}">`
       : "";
     const price = p.price ? `<div class="cb-product-price">${escapeHTML(p.price)}</div>` : "";
     const btn = p.url
@@ -529,8 +530,11 @@
         segments.forEach((seg) => {
           if (seg.type === "card") {
             const wrapper = document.createElement("div");
-            wrapper.className = "cb-msg bot";
+            wrapper.className = "cb-msg bot cb-msg-card";
             wrapper.innerHTML = renderProductCard(seg);
+            // Handle image error via JS (inline onerror unreliable in Shadow DOM)
+            const img = wrapper.querySelector(".cb-product-img");
+            if (img) img.addEventListener("error", () => { img.style.display = "none"; });
             messagesEl.insertBefore(wrapper, typingEl);
           } else {
             const el = document.createElement("div");
