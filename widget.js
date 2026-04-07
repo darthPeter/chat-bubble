@@ -257,29 +257,28 @@
     .cb-status-banner.visible{display:block}
 
     /* ── Product cards ───────────────────────────────────── */
-    .cb-msg-card{
-      padding:0 !important;border:1px solid var(--cb-color-border) !important;
-      border-radius:10px !important;overflow:hidden;
-      background:var(--cb-color-surface) !important;
-      border-bottom-left-radius:4px !important;
-    }
     .cb-product-card{
-      display:block;
+      align-self:flex-start;max-width:80%;
+      border:1px solid var(--cb-color-border);border-radius:10px;
+      overflow:hidden;background:var(--cb-color-surface);
+      border-bottom-left-radius:4px;
+      font-family:var(--cb-font-family);font-size:var(--cb-font-size);
+      animation:cb-msgIn .3s ease-out both;
     }
     .cb-product-img{
       width:100%;max-height:160px;object-fit:cover;display:block;
       background:var(--cb-color-surface-alt);
     }
     .cb-product-info{
-      padding:10px 12px;display:block;
+      padding:10px 12px;
     }
     .cb-product-name{
       font-weight:600;font-size:var(--cb-font-size);
       line-height:1.3;margin-bottom:4px;
-      color:var(--cb-color-text);display:block;
+      color:var(--cb-color-text);
     }
     .cb-product-price{
-      font-size:13px;font-weight:600;display:block;
+      font-size:13px;font-weight:600;
       color:var(--cb-color-primary);margin-bottom:8px;
     }
     .cb-product-btn{
@@ -488,7 +487,7 @@
     return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
   }
 
-  function renderProductCard(p) {
+  function renderProductCardInner(p) {
     const img = p.image
       ? `<img class="cb-product-img" src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}">`
       : "";
@@ -496,7 +495,7 @@
     const btn = p.url
       ? `<a class="cb-product-btn" href="${escapeHTML(p.url)}" target="_blank" rel="noopener">${escapeHTML(p.button || "View ›")}</a>`
       : "";
-    return `<div class="cb-product-card">${img}<div class="cb-product-info"><div class="cb-product-name">${escapeHTML(p.name)}</div>${price}${btn}</div></div>`;
+    return `${img}<div class="cb-product-info"><div class="cb-product-name">${escapeHTML(p.name)}</div>${price}${btn}</div>`;
   }
 
   // ── Lightweight markdown for bot messages ───────────────────────────
@@ -529,13 +528,12 @@
       if (segments) {
         segments.forEach((seg) => {
           if (seg.type === "card") {
-            const wrapper = document.createElement("div");
-            wrapper.className = "cb-msg bot cb-msg-card";
-            wrapper.innerHTML = renderProductCard(seg);
-            // Handle image error via JS (inline onerror unreliable in Shadow DOM)
-            const img = wrapper.querySelector(".cb-product-img");
+            const card = document.createElement("div");
+            card.className = "cb-product-card";
+            card.innerHTML = renderProductCardInner(seg);
+            const img = card.querySelector(".cb-product-img");
             if (img) img.addEventListener("error", () => { img.style.display = "none"; });
-            messagesEl.insertBefore(wrapper, typingEl);
+            messagesEl.insertBefore(card, typingEl);
           } else {
             const el = document.createElement("div");
             el.className = "cb-msg bot";
