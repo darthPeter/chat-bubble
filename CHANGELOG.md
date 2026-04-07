@@ -1,5 +1,18 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-04-07 — Product cards for e-commerce
+
+### Widget (widget.js)
+- Rich product cards rendered when AI bot uses `[product]...[/product]` format in responses
+- Fields: `name` (required), `price`, `image`, `url` — missing fields gracefully omitted
+- Cards styled with existing `--cb-*` CSS custom properties — automatically matches each client's theme
+- Image with `onerror` fallback, "View" button opens product URL in new tab
+- Fully backwards compatible: no `[product]` markers = zero behavior change
+- Fool-proof: broken format falls back to plain text, XSS-safe (all values HTML-escaped)
+- Supports interleaved text and product cards in the same message
+
+---
+
 ## 2026-04-06 — Auto-open feature
 
 ### Widget (widget.js)

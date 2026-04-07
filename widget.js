@@ -256,6 +256,40 @@
     .cb-status-banner.error{background:#fee2e2;color:#991b1b}
     .cb-status-banner.visible{display:block}
 
+    /* ── Product cards ───────────────────────────────────── */
+    .cb-product-card{
+      border:1px solid var(--cb-color-border);border-radius:10px;
+      overflow:hidden;background:var(--cb-color-surface);
+    }
+    .cb-product-img{
+      width:100%;height:140px;object-fit:cover;display:block;
+      background:var(--cb-color-surface-alt);
+    }
+    .cb-product-info{padding:10px 12px}
+    .cb-product-name{
+      font-weight:600;font-size:var(--cb-font-size);
+      line-height:1.3;margin-bottom:4px;
+      color:var(--cb-color-text);
+    }
+    .cb-product-price{
+      font-size:13px;font-weight:600;
+      color:var(--cb-color-primary);margin-bottom:8px;
+    }
+    .cb-product-btn{
+      display:inline-block;padding:6px 14px;
+      font-size:12px;font-weight:600;text-decoration:none;
+      border-radius:6px;
+      background:var(--cb-color-primary);color:var(--cb-color-on-primary);
+      transition:opacity .15s;
+    }
+    .cb-product-btn:hover{opacity:.85}
+    .cb-msg.bot .cb-product-card{border:none}
+    .cb-msg.bot:has(.cb-product-card){
+      padding:0;border:1px solid var(--cb-color-border);
+      border-radius:10px;overflow:hidden;background:var(--cb-color-surface);
+      border-bottom-left-radius:4px;
+    }
+
     /* ── Scrollbar ────────────────────────────────────────── */
     .cb-messages::-webkit-scrollbar{width:6px}
     .cb-messages::-webkit-scrollbar-track{background:transparent}
@@ -411,6 +445,59 @@
     }
   }
 
+  // ── Product card parser ─────────────────────────────────────────────
+  function parseProductCards(text) {
+    try {
+      const re = /\[product\]([\s\S]*?)\[\/product\]/gi;
+      if (!re.test(text)) return null;
+      re.lastIndex = 0;
+
+      const segments = [];
+      let lastIndex = 0;
+      let match;
+      while ((match = re.exec(text)) !== null) {
+        const before = text.slice(lastIndex, match.index).trim();
+        if (before) segments.push({ type: "text", content: before });
+
+        const fields = {};
+        match[1].split("\n").forEach((line) => {
+          const m = line.match(/^\s*(name|price|image|url)\s*:\s*(.+)/i);
+          if (m) fields[m[1].toLowerCase()] = m[2].trim();
+        });
+
+        if (fields.name) {
+          segments.push({ type: "card", ...fields });
+        } else {
+          // No name → render block as plain text
+          const raw = match[0].trim();
+          if (raw) segments.push({ type: "text", content: raw });
+        }
+        lastIndex = match.index + match[0].length;
+      }
+      const after = text.slice(lastIndex).trim();
+      if (after) segments.push({ type: "text", content: after });
+
+      return segments.length ? segments : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function escapeHTML(str) {
+    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function renderProductCard(p) {
+    const img = p.image
+      ? `<img class="cb-product-img" src="${escapeHTML(p.image)}" alt="${escapeHTML(p.name)}" onerror="this.style.display='none'">`
+      : "";
+    const price = p.price ? `<div class="cb-product-price">${escapeHTML(p.price)}</div>` : "";
+    const btn = p.url
+      ? `<a class="cb-product-btn" href="${escapeHTML(p.url)}" target="_blank" rel="noopener">View ›</a>`
+      : "";
+    return `<div class="cb-product-card">${img}<div class="cb-product-info"><div class="cb-product-name">${escapeHTML(p.name)}</div>${price}${btn}</div></div>`;
+  }
+
   // ── Lightweight markdown for bot messages ───────────────────────────
   function formatBotMessage(text) {
     // Escape HTML to prevent XSS
@@ -436,15 +523,34 @@
   }
 
   function appendMessage(text, sender) {
-    const el = document.createElement("div");
-    el.className = `cb-msg ${sender}`;
     if (sender === "bot") {
-      el.innerHTML = formatBotMessage(text);
+      const segments = parseProductCards(text);
+      if (segments) {
+        segments.forEach((seg) => {
+          if (seg.type === "card") {
+            const wrapper = document.createElement("div");
+            wrapper.className = "cb-msg bot";
+            wrapper.innerHTML = renderProductCard(seg);
+            messagesEl.insertBefore(wrapper, typingEl);
+          } else {
+            const el = document.createElement("div");
+            el.className = "cb-msg bot";
+            el.innerHTML = formatBotMessage(seg.content);
+            messagesEl.insertBefore(el, typingEl);
+          }
+        });
+      } else {
+        const el = document.createElement("div");
+        el.className = "cb-msg bot";
+        el.innerHTML = formatBotMessage(text);
+        messagesEl.insertBefore(el, typingEl);
+      }
     } else {
+      const el = document.createElement("div");
+      el.className = "cb-msg user";
       el.textContent = text;
+      messagesEl.insertBefore(el, typingEl);
     }
-    messagesEl.insertBefore(el, typingEl);
-    // Always scroll for own messages; only scroll for bot if user is near bottom
     if (sender === "user" || isNearBottom()) {
       requestAnimationFrame(() => scrollToBottom());
     }

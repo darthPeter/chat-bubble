@@ -461,7 +461,7 @@ This is per-client AI brain config, not widget code.
   - [ ] Set `Timers.Inactive` on Create Conversation in Token Endpoint
   - [ ] Add `onConversationStateUpdated` to Twilio Service webhook filters
   - [ ] Build "Chat — Post-Conversation Analysis" workflow with client routing
-- [ ] **Product cards** — rich product display for e-commerce clients. See plan above.
+- [x] **Product cards** — rich product display for e-commerce clients, deployed (2026-04-07). See plan above.
 - [ ] **Live agent handoff** — in progress, steps 1-2 done. Separate plan: [`LIVE_AGENT_PLAN.md`](LIVE_AGENT_PLAN.md)
 
 ---
