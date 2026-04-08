@@ -294,6 +294,11 @@
       transition:opacity .15s;
     }
     .cb-product-btn:hover{opacity:.85}
+    .cb-product-link{
+      display:block;text-decoration:none;color:inherit;
+      transition:box-shadow .15s;border-radius:12px;
+    }
+    .cb-product-link:hover{box-shadow:0 2px 8px rgba(0,0,0,.15)}
 
     /* ── Scrollbar ────────────────────────────────────────── */
     .cb-messages::-webkit-scrollbar{width:6px}
@@ -498,9 +503,13 @@
       : "";
     const price = p.price ? `<div class="cb-product-price">${escapeHTML(p.price)}</div>` : "";
     const btn = p.url
-      ? `<a class="cb-product-btn" href="${escapeHTML(p.url)}" target="_blank" rel="noopener">${escapeHTML(p.button || "View ›")}</a>`
+      ? `<span class="cb-product-btn">${escapeHTML(p.button || "View ›")}</span>`
       : "";
-    return `${img}<div class="cb-product-info"><div class="cb-product-name">${escapeHTML(p.name)}</div>${price}${btn}</div>`;
+    const inner = `${img}<div class="cb-product-info"><div class="cb-product-name">${escapeHTML(p.name)}</div>${price}${btn}</div>`;
+    if (p.url) {
+      return `<a class="cb-product-link" href="${escapeHTML(p.url)}" target="_blank" rel="noopener">${inner}</a>`;
+    }
+    return inner;
   }
 
   // ── Lightweight markdown for bot messages ───────────────────────────
@@ -566,7 +575,7 @@
       if (segments) {
         for (const seg of segments) {
           if (seg.type === "card") {
-            if (stream) await new Promise((r) => setTimeout(r, 400));
+            if (stream) await new Promise((r) => setTimeout(r, 700));
             const card = document.createElement("div");
             card.className = "cb-product-card";
             card.innerHTML = renderProductCardInner(seg);
