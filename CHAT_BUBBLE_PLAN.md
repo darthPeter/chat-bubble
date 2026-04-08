@@ -463,6 +463,7 @@ This is per-client AI brain config, not widget code.
   - [ ] Add `onConversationStateUpdated` to Twilio Service webhook filters
   - [ ] Build "Chat — Post-Conversation Analysis" workflow with client routing
 - [x] **Product cards** — rich product display for e-commerce clients, deployed (2026-04-07). See plan above.
+- [ ] **Real-time streaming** — SSE sideband architecture planned, not yet approved. Separate plan: [`STREAMING_PLAN.md`](STREAMING_PLAN.md)
 - [ ] **Live agent handoff** — in progress, steps 1-2 done. Separate plan: [`LIVE_AGENT_PLAN.md`](LIVE_AGENT_PLAN.md)
 
 ---

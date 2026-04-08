@@ -54,6 +54,7 @@ n8n Workflows:
   - `workflows/` — n8n workflow JSON backups (secrets redacted)
   - `CHAT_BUBBLE_PLAN.md` — roadmap, plans, and TODO
   - `LIVE_AGENT_PLAN.md` — live agent handoff architecture and implementation status
+  - `STREAMING_PLAN.md` — real-time SSE streaming architecture (planning, not yet implemented)
   - `CHANGELOG.md` — version history
 
 ## n8n Workflows
@@ -168,3 +169,4 @@ n8n HTTP Request node can only bind **one static credential** — you cannot swi
 
 See `CHAT_BUBBLE_PLAN.md` for multi-client architecture plan, post-conversation webhook plan, and current TODO.
 See `LIVE_AGENT_PLAN.md` for live agent handoff architecture (in progress — steps 1-2 done, step 3 next).
+See `STREAMING_PLAN.md` for real-time SSE streaming architecture (planning only, not yet implemented).
