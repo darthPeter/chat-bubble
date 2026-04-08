@@ -546,13 +546,13 @@
       if (cancelled) break;
       revealed += word;
       el.innerHTML = formatBotMessage(revealed);
-      if (isNearBottom()) requestAnimationFrame(() => scrollToBottom());
+      requestAnimationFrame(() => scrollToBottom());
       await new Promise((r) => setTimeout(r, 35));
     }
 
     // Ensure full text rendered (in case cancelled mid-stream)
     el.innerHTML = formatBotMessage(text);
-    if (isNearBottom()) requestAnimationFrame(() => scrollToBottom());
+    requestAnimationFrame(() => scrollToBottom());
     if (activeStream === handle) activeStream = null;
   }
 
@@ -573,7 +573,7 @@
             const img = card.querySelector(".cb-product-img");
             if (img) img.addEventListener("error", () => { img.style.display = "none"; });
             messagesEl.insertBefore(card, typingEl);
-            if (isNearBottom()) requestAnimationFrame(() => scrollToBottom());
+            requestAnimationFrame(() => scrollToBottom());
           } else {
             const el = document.createElement("div");
             el.className = "cb-msg bot";
