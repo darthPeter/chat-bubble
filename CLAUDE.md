@@ -38,6 +38,7 @@ n8n Workflows:
 - **Welcome message**: widget sends `[system] generate welcome message` on new conversations — AI generates greeting. Skipped on session restore.
 - **Bot markdown**: lightweight formatter renders `\n`, `**bold**`, `*italic*`, and clickable URLs in bot messages. HTML escaped first for XSS safety.
 - **Product cards**: `[product]...[/product]` blocks in bot messages render as rich cards (image, name, price, link). Fields: `name` (required), `price`, `image`, `url`, `button` (label, default "View ›"). Backwards compatible — no markers = plain text. See `CHAT_BUBBLE_PLAN.md` for format spec.
+- **Streaming text reveal**: bot messages reveal word by word (~35ms/word) with auto-scroll. Product cards appear with 400ms stagger. Designed as async generator pattern — swappable for real SSE/WebSocket streaming later. History restore is instant.
 
 ## Repo & Hosting
 
@@ -108,6 +109,7 @@ Twilio Webhook → Is User Message? (If) → Extract Message Data (Code) → Gua
 - Client webhook returns: `{ output }` (also supports `reply`, `message`, `text` keys)
 - `conversationSid` serves as session/thread ID for AI context across messages
 - Message length truncated at 2000 chars before AI webhook
+- Call AI Webhook timeout: 60s (increased from 30s for Claude thinking + tool calls)
 
 ## Twilio Setup
 
@@ -156,7 +158,7 @@ n8n workflow JSON backups are stored in `workflows/` with secrets redacted as `_
 |---|---|---|---|---|---|
 | DigiShares | `digishares` | `themes/digishares.css` | `demo.html` | off | Live |
 | Alkohol.cz | `alkoholcz` | `themes/alkoholcz.css` | `demo-alkoholcz.html` | off | Live (2026-03-13) |
-| Pompo.cz | `pompo` | `themes/pompo.css` | `demo-pompo.html` | on (2s) | Live (2026-04-05) |
+| Pompo.cz | `pompo` | `themes/pompo.css` | `demo-pompo.html` | on (2s) | Live (2026-04-05), brain v1.5 (2026-04-08) |
 
 ## n8n Credential Limitation
 
