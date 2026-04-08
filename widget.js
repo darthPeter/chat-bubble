@@ -547,7 +547,7 @@
       revealed += word;
       el.innerHTML = formatBotMessage(revealed);
       if (isNearBottom()) requestAnimationFrame(() => scrollToBottom());
-      await new Promise((r) => setTimeout(r, 25));
+      await new Promise((r) => setTimeout(r, 35));
     }
 
     // Ensure full text rendered (in case cancelled mid-stream)
@@ -566,6 +566,7 @@
       if (segments) {
         for (const seg of segments) {
           if (seg.type === "card") {
+            if (stream) await new Promise((r) => setTimeout(r, 400));
             const card = document.createElement("div");
             card.className = "cb-product-card";
             card.innerHTML = renderProductCardInner(seg);
