@@ -1,5 +1,19 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-04-08 — Streaming text reveal + Pompo brain v1.5
+
+### Widget (widget.js)
+- Bot text messages now reveal word by word (~25ms/word) with auto-scroll following along
+- Streaming designed as async generator pattern — ready to swap simulated streaming for real SSE/WebSocket token streaming from AI brain
+- `appendMessage` now accepts `{ stream: true }` option: live messages stream, history restore is instant
+- If new message arrives during streaming, current stream finishes instantly
+- Product cards still appear instantly (no streaming for visual elements)
+
+### Message Handler (n8n)
+- Pompo routing updated to new AI brain: `Pompo-RAG-Agent-v1.5` (workflow `UxPTfMBoz5EHrTdt`)
+
+---
+
 ## 2026-04-07 — Product cards for e-commerce
 
 ### Widget (widget.js)

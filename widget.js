@@ -70,6 +70,7 @@
   const saved = loadSession();
   let identity = saved?.identity || generateIdentity();
   let isOpen = false;
+  let activeStream = null; // current streaming operation (cancelable)
 
   // ── Shadow DOM host ────────────────────────────────────────────────
   const host = document.createElement("div");
@@ -526,11 +527,44 @@
       .replace(/\n/g, "<br>");
   }
 
-  function appendMessage(text, sender) {
+  // ── Streaming text renderer ─────────────────────────────────────────
+  // Reveals bot text word by word with auto-scroll.
+  // Future: swap simulateStream() for a real SSE/WebSocket token source —
+  // streamBotText() accepts any async iterable of string chunks.
+  function finishActiveStream() {
+    if (activeStream) { activeStream.cancel(); activeStream = null; }
+  }
+
+  async function streamBotText(el, text) {
+    let cancelled = false;
+    const handle = { cancel() { cancelled = true; } };
+    activeStream = handle;
+
+    const words = text.split(/(\s+)/);
+    let revealed = "";
+    for (const word of words) {
+      if (cancelled) break;
+      revealed += word;
+      el.innerHTML = formatBotMessage(revealed);
+      if (isNearBottom()) requestAnimationFrame(() => scrollToBottom());
+      await new Promise((r) => setTimeout(r, 25));
+    }
+
+    // Ensure full text rendered (in case cancelled mid-stream)
+    el.innerHTML = formatBotMessage(text);
+    if (isNearBottom()) requestAnimationFrame(() => scrollToBottom());
+    if (activeStream === handle) activeStream = null;
+  }
+
+  // ── Append message ────────────────────────────────────────────────
+  // stream: true = word-by-word reveal (live messages)
+  // stream: false = instant (history restore)
+  async function appendMessage(text, sender, { stream = false } = {}) {
     if (sender === "bot") {
+      finishActiveStream();
       const segments = parseProductCards(text);
       if (segments) {
-        segments.forEach((seg) => {
+        for (const seg of segments) {
           if (seg.type === "card") {
             const card = document.createElement("div");
             card.className = "cb-product-card";
@@ -538,18 +572,27 @@
             const img = card.querySelector(".cb-product-img");
             if (img) img.addEventListener("error", () => { img.style.display = "none"; });
             messagesEl.insertBefore(card, typingEl);
+            if (isNearBottom()) requestAnimationFrame(() => scrollToBottom());
           } else {
             const el = document.createElement("div");
             el.className = "cb-msg bot";
-            el.innerHTML = formatBotMessage(seg.content);
             messagesEl.insertBefore(el, typingEl);
+            if (stream) {
+              await streamBotText(el, seg.content);
+            } else {
+              el.innerHTML = formatBotMessage(seg.content);
+            }
           }
-        });
+        }
       } else {
         const el = document.createElement("div");
         el.className = "cb-msg bot";
-        el.innerHTML = formatBotMessage(text);
         messagesEl.insertBefore(el, typingEl);
+        if (stream) {
+          await streamBotText(el, text);
+        } else {
+          el.innerHTML = formatBotMessage(text);
+        }
       }
     } else {
       const el = document.createElement("div");
@@ -695,7 +738,7 @@
         // Only render messages from others (bot)
         if (msg.author !== identity) {
           showTyping(false);
-          appendMessage(msg.body, "bot");
+          appendMessage(msg.body, "bot", { stream: true });
         }
       });
 
