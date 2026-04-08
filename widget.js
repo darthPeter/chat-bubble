@@ -820,7 +820,7 @@
     twilioClient = null;
     activeConversation = null;
     // Clear messages
-    messagesEl.querySelectorAll(".cb-msg").forEach((el) => el.remove());
+    messagesEl.querySelectorAll(".cb-msg, .cb-product-card").forEach((el) => el.remove());
     showTyping(false);
     setStatus("");
     connectTwilio();
