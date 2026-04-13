@@ -64,10 +64,10 @@
 
 /* Product cards — taller image for portrait bottles */
 .cb-product-img {
-  height: 180px;
-  object-fit: contain;
-  background: #fff;
-  padding: 8px;
+  height: 200px !important;
+  object-fit: contain !important;
+  background: #fff !important;
+  padding: 10px !important;
 }
 
 /* Mobile — reset to fullscreen (undo position overrides above) */
