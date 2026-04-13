@@ -62,6 +62,14 @@
   right: 8px !important;
 }
 
+/* Product cards — taller image for portrait bottles */
+.cb-product-img {
+  height: 180px;
+  object-fit: contain;
+  background: #fff;
+  padding: 8px;
+}
+
 /* Mobile — reset to fullscreen (undo position overrides above) */
 @media(max-width:480px) {
   .cb-btn {
