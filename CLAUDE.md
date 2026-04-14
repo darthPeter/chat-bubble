@@ -159,7 +159,7 @@ n8n workflow JSON backups are stored in `workflows/` with secrets redacted as `_
 |---|---|---|---|---|---|
 | DigiShares | `digishares` | `themes/digishares.css` | `demo.html` | off | Live |
 | Alkohol.cz | `alkoholcz` | `themes/alkoholcz.css` | `demo-alkoholcz.html` | on (2s) | Live (2026-03-13) |
-| Pompo.cz | `pompo` | `themes/pompo.css` | `demo-pompo.html` | on (2s) | Live (2026-04-05), brain v1.5 (2026-04-08) |
+| Pompo.cz | `pompo` | `themes/pompo.css` | `demo-pompo.html` | on (2s) | Live (2026-04-05), brain v1.7 (2026-04-14) |
 
 ## n8n Credential Limitation
 

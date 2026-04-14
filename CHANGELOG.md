@@ -1,5 +1,17 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-04-14 — Alkohol.cz product cards + Pompo brain v1.7
+
+### Alkohol.cz theme (themes/alkoholcz.css)
+- Product card images: taller (200px), `object-fit: contain` for portrait bottle images
+- White background + padding for clean bottle presentation
+- Auto-open enabled on demo page
+
+### Message Handler (n8n)
+- Pompo routing updated to `pompo-chat-v17` brain
+
+---
+
 ## 2026-04-08 — Streaming text reveal + Pompo brain v1.5 + fixes
 
 ### Widget (widget.js)
