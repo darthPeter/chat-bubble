@@ -76,7 +76,7 @@ Chat Token Webhook → Rate Limit & Validate (Code) → Is Valid? (If)
     → false (new session):   Create Conversation → Add Participant → Prepare JWT → ...
   → false: Reject Request (Respond 403)
 ```
-- Rate limiting: 10 conversations/IP/hour via `$getWorkflowStaticData('global')`, token refreshes bypass
+- Rate limiting: 30 conversations/IP/hour via `$getWorkflowStaticData('global')`, token refreshes bypass
 - Client validation: `CLIENTS` config table in Rate Limit node — validates key per `client_id` from request body. No `client_id` defaults to `digishares`.
 - Token TTL: 1800s (30 min), widget handles refresh via `tokenAboutToExpire`
 - Session restore: `refresh: true` + `conversation_sid` skips conversation creation
