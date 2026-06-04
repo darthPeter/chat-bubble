@@ -50,8 +50,3 @@
   --cb-font-size: 14px;
 }
 
-/* Position override — shift up/left to overlap Atlas Copco's existing chat icon
-   on atlascopco.com/en-us/itba. Defaults are bottom:24px/right:24px. */
-.cb-btn { bottom: 60px; right: 50px; }
-.cb-window { bottom: 136px; right: 50px; }
-
