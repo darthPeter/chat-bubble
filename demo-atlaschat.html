@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atlas Copco ITBA</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+    body {
+      background: url('./assets/atlaschat-bg.jpg') top center / cover no-repeat;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Chat Bubble Widget — Atlas Copco ITBA
+       Backend not yet wired:
+         - Token Endpoint CLIENTS table needs `atlaschat` entry (n8n workflow ODrNXQASOPNObSWd)
+         - Message Handler ROUTING table needs `atlaschat` → AtlasChat-RAG-Agent webhook
+         - AtlasChat-RAG-Agent workflow itself still in build (see AtlasChat/BUILD-STATUS.md)
+       Replace __ATLASCHAT_CLIENT_KEY__ with the real key once provisioned. -->
+  <script
+    src="./widget.js"
+    data-webhook="https://n8n.srv1104100.hstgr.cloud/webhook/chat-token"
+    data-theme="atlaschat"
+    data-title="Atlas Copco ITBA"
+    data-logo=""
+    data-client-key="__ATLASCHAT_CLIENT_KEY__"
+    data-client-id="atlaschat"
+  ></script>
+</body>
+</html>

@@ -1,0 +1,57 @@
+:host {
+  /* Colors — Atlas Copco ITBA brand (bright industrial blue, B2B) */
+  --cb-color-primary: #1B9CD7;
+  --cb-color-primary-hover: #1583B8;
+  --cb-color-on-primary: #fff;
+  --cb-color-accent: #003D7A;
+  --cb-color-surface: #fff;
+  --cb-color-surface-alt: #f5f7fa;
+  --cb-color-border: #d8dee6;
+  --cb-color-text: #1a2235;
+  --cb-color-text-secondary: #5a6473;
+
+  /* Floating button */
+  --cb-btn-size: 60px;
+  --cb-btn-size-mobile: 54px;
+  --cb-btn-radius: 50%;
+  --cb-btn-shadow: 0 4px 16px rgba(27,156,215,.40);
+  --cb-btn-shadow-hover: 0 6px 24px rgba(27,156,215,.50);
+
+  /* Window */
+  --cb-window-radius: 12px;
+  --cb-window-shadow: 0 10px 40px rgba(0,61,122,.20);
+  --cb-window-width: 380px;
+  --cb-window-height: 520px;
+
+  /* Header — Atlas Copco blue gradient */
+  --cb-header-bg: linear-gradient(135deg, #1B9CD7 0%, #1583B8 100%);
+  --cb-header-color: #fff;
+  --cb-header-padding: 16px 18px;
+
+  /* Messages */
+  --cb-msg-radius: 12px;
+  --cb-msg-bot-bg: #fff;
+  --cb-msg-bot-color: var(--cb-color-text);
+  --cb-msg-bot-border: 1px solid var(--cb-color-border);
+  --cb-msg-user-bg: #1B9CD7;
+  --cb-msg-user-color: #fff;
+
+  /* Input */
+  --cb-input-radius: 22px;
+  --cb-input-border: #d8dee6;
+  --cb-input-focus-border: #1B9CD7;
+
+  /* Send button */
+  --cb-send-bg: #1B9CD7;
+  --cb-send-color: #fff;
+
+  /* Typography */
+  --cb-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --cb-font-size: 14px;
+}
+
+/* Position override — shift up/left to overlap Atlas Copco's existing chat icon
+   on atlascopco.com/en-us/itba. Defaults are bottom:24px/right:24px. */
+.cb-btn { bottom: 60px; right: 50px; }
+.cb-window { bottom: 136px; right: 50px; }
+
