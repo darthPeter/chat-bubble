@@ -1,5 +1,20 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-06-10 — LaDenta wired (Iva chat)
+
+### Token Endpoint (n8n `ODrNXQASOPNObSWd`)
+- `ladenta` added to `CLIENTS` table with fresh 48-char hex access key
+
+### Message Handler (n8n `wnHbfZ7Djko2G4HZ`)
+- `ladenta` added to `ROUTING` table → `https://n8n.srv1104100.hstgr.cloud/webhook/eva-chat`
+- Eva-chat brain (workflow `GQG830S0VGbfJVev`) enforces `GlobalChatbot` auth on its end — direct unauthenticated probe returns HTTP 403. Routing uses the standard shared credential.
+
+### Widget
+- `demo-ladenta.html` placeholder client key replaced with real key
+- Active Clients table in CLAUDE.md updated with LaDenta row + redacted-placeholder list extended
+
+---
+
 ## 2026-06-09 — AtlasChat wired
 
 ### Token Endpoint (n8n `ODrNXQASOPNObSWd`)

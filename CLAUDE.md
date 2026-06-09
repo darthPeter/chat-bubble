@@ -146,9 +146,9 @@ n8n workflow JSON backups are stored in `workflows/` with secrets redacted as `_
 **Redacted placeholders** (actual values configured in n8n):
 - `__TWILIO_BASIC_AUTH__` — Basic auth header (base64 of API_KEY_SID:API_KEY_SECRET)
 - `__TWILIO_API_SECRET__` — Twilio API Key Secret
-- `__CLIENT_KEY_DIGISHARES__`, `__CLIENT_KEY_ALKOHOLCZ__`, `__CLIENT_KEY_POMPO__`, `__CLIENT_KEY_ATLASCHAT__` — Per-client access keys
+- `__CLIENT_KEY_DIGISHARES__`, `__CLIENT_KEY_ALKOHOLCZ__`, `__CLIENT_KEY_POMPO__`, `__CLIENT_KEY_ATLASCHAT__`, `__CLIENT_KEY_LADENTA__` — Per-client access keys
 - `__ACCOUNT_SID__`, `__API_KEY_SID__`, `__SERVICE_SID__` — Twilio identifiers
-- `__AI_WEBHOOK_URL_DIGISHARES__`, `__AI_WEBHOOK_URL_ALKOHOLCZ__`, `__AI_WEBHOOK_URL_POMPO__`, `__AI_WEBHOOK_URL_ATLASCHAT__` — Per-client AI webhook URLs
+- `__AI_WEBHOOK_URL_DIGISHARES__`, `__AI_WEBHOOK_URL_ALKOHOLCZ__`, `__AI_WEBHOOK_URL_POMPO__`, `__AI_WEBHOOK_URL_ATLASCHAT__`, `__AI_WEBHOOK_URL_LADENTA__` — Per-client AI webhook URLs
 - `__AI_AUTH_TOKEN_DIGISHARES__`, `__AI_AUTH_TOKEN_ALKOHOLCZ__` — Per-client AI webhook auth tokens (stored in ROUTING table but auth handled by GlobalChatbot credential)
 - `__CREDENTIAL_ID__`, `__CREDENTIAL_NAME__` — n8n credential references (GlobalChatbot)
 - `__AGENT_PASSWORD_ADMIN__` — Agent login password (stored in AGENTS table in Validate Agent node)
@@ -161,6 +161,7 @@ n8n workflow JSON backups are stored in `workflows/` with secrets redacted as `_
 | Alkohol.cz | `alkoholcz` | `themes/alkoholcz.css` | `demo-alkoholcz.html` | on (2s) | Live (2026-03-13) |
 | Pompo.cz | `pompo` | `themes/pompo.css` | `demo-pompo.html` | on (2s) | Live (2026-04-05), brain v1.7 (2026-04-14) |
 | Atlas Copco ITBA | `atlaschat` | `themes/atlaschat.css` | `demo-atlaschat.html` | off | Test phase (2026-06-09), brain at `/webhook/atlaschat-chat`, no brain-side auth check yet |
+| LaDenta | `ladenta` | `themes/ladenta.css` | `demo-ladenta.html` | off | Test phase (2026-06-10), brain at `/webhook/eva-chat` (eva-chat agent), brain-side `GlobalChatbot` auth ENFORCED |
 
 ## n8n Credential Limitation
 
