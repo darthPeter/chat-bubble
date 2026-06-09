@@ -1,0 +1,51 @@
+:host {
+  /* Colors — LaDenta brand (warm sage + cream, premium dental, anti-clinical) */
+  --cb-color-primary: #5A6E47;
+  --cb-color-primary-hover: #475A37;
+  --cb-color-on-primary: #fff;
+  --cb-color-accent: #A8B888;
+  --cb-color-surface: #fff;
+  --cb-color-surface-alt: #EDE7D3;
+  --cb-color-border: #E0D8C0;
+  --cb-color-text: #2F3A26;
+  --cb-color-text-secondary: #5E6A4E;
+
+  /* Floating button */
+  --cb-btn-size: 60px;
+  --cb-btn-size-mobile: 54px;
+  --cb-btn-radius: 50%;
+  --cb-btn-shadow: 0 4px 16px rgba(47,58,38,.30);
+  --cb-btn-shadow-hover: 0 6px 24px rgba(47,58,38,.40);
+
+  /* Window */
+  --cb-window-radius: 18px;
+  --cb-window-shadow: 0 12px 40px rgba(47,58,38,.20);
+  --cb-window-width: 380px;
+  --cb-window-height: 520px;
+
+  /* Header — sage gradient */
+  --cb-header-bg: linear-gradient(135deg, #5A6E47 0%, #475A37 100%);
+  --cb-header-color: #fff;
+  --cb-header-padding: 16px 18px;
+
+  /* Messages */
+  --cb-msg-radius: 18px;
+  --cb-msg-bot-bg: #fff;
+  --cb-msg-bot-color: var(--cb-color-text);
+  --cb-msg-bot-border: 1px solid var(--cb-color-border);
+  --cb-msg-user-bg: #5A6E47;
+  --cb-msg-user-color: #fff;
+
+  /* Input */
+  --cb-input-radius: 24px;
+  --cb-input-border: #E0D8C0;
+  --cb-input-focus-border: #5A6E47;
+
+  /* Send button */
+  --cb-send-bg: #5A6E47;
+  --cb-send-color: #fff;
+
+  /* Typography */
+  --cb-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+  --cb-font-size: 14px;
+}
