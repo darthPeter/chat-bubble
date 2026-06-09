@@ -14,19 +14,14 @@
 </head>
 <body>
 
-  <!-- Chat Bubble Widget — Atlas Copco ITBA
-       Backend not yet wired:
-         - Token Endpoint CLIENTS table needs `atlaschat` entry (n8n workflow ODrNXQASOPNObSWd)
-         - Message Handler ROUTING table needs `atlaschat` → AtlasChat-RAG-Agent webhook
-         - AtlasChat-RAG-Agent workflow itself still in build (see AtlasChat/BUILD-STATUS.md)
-       Replace __ATLASCHAT_CLIENT_KEY__ with the real key once provisioned. -->
+  <!-- Chat Bubble Widget — Atlas Copco ITBA -->
   <script
     src="./widget.js"
     data-webhook="https://n8n.srv1104100.hstgr.cloud/webhook/chat-token"
     data-theme="atlaschat"
     data-title="Atlas Copco ITBA"
     data-logo=""
-    data-client-key="__ATLASCHAT_CLIENT_KEY__"
+    data-client-key="c4ae365ecc36583dc9ee9a3f255df2493205e304ae7c9f63"
     data-client-id="atlaschat"
   ></script>
 </body>

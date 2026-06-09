@@ -1,5 +1,20 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-06-09 — AtlasChat wired
+
+### Token Endpoint (n8n `ODrNXQASOPNObSWd`)
+- `atlaschat` added to `CLIENTS` table with fresh 48-char hex access key
+
+### Message Handler (n8n `wnHbfZ7Djko2G4HZ`)
+- `atlaschat` added to `ROUTING` table → `https://n8n.srv1104100.hstgr.cloud/webhook/atlaschat-chat`
+- Brain receives the shared `GlobalChatbot` auth header. Brain-side credential check not yet enforced (will be added after test phase per Petr 2026-06-09).
+
+### Widget
+- `demo-atlaschat.html` placeholder client key replaced with real key
+- Active Clients table in CLAUDE.md updated with AtlasChat row
+
+---
+
 ## 2026-04-14 — Alkohol.cz product cards + Pompo brain v1.7
 
 ### Alkohol.cz theme (themes/alkoholcz.css)
