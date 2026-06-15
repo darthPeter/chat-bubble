@@ -160,7 +160,7 @@ n8n workflow JSON backups are stored in `workflows/` with secrets redacted as `_
 | DigiShares | `digishares` | `themes/digishares.css` | `demo.html` | off | Live |
 | Alkohol.cz | `alkoholcz` | `themes/alkoholcz.css` | `demo-alkoholcz.html` | on (2s) | Live (2026-03-13) |
 | Pompo.cz | `pompo` | `themes/pompo.css` | `demo-pompo.html` | on (2s) | Live (2026-04-05), brain v1.7 (2026-04-14) |
-| Atlas Copco ITBA | `atlaschat` | `themes/atlaschat.css` | `demo-atlaschat.html` | off | Test phase (2026-06-09), brain at `/webhook/atlaschat-chat`, no brain-side auth check yet |
+| Atlas Copco ITBA | `atlaschat` | `themes/atlaschat.css` | `demo-atlaschat.html` | off | Test phase (2026-06-09), brain repointed (2026-06-15) to `AtlasChat-RAG-Agent-v5` at `/webhook/atlaschat-chat-v5`, no brain-side auth check yet |
 | LaDenta | `ladenta` | `themes/ladenta.css` | `demo-ladenta.html` | off | Test phase (2026-06-10), brain at `/webhook/eva-chat` (eva-chat agent), brain-side `GlobalChatbot` auth ENFORCED |
 
 ## n8n Credential Limitation

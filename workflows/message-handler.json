@@ -1,9 +1,9 @@
 {
   "_backup": {
-    "date": "2026-06-10",
-    "version": 60,
+    "date": "2026-06-15",
+    "version": 67,
     "source": "n8n MCP",
-    "note": "ladenta (eva-chat brain) added to ROUTING table"
+    "note": "atlaschat ROUTING repointed to new brain AtlasChat-RAG-Agent-v5 (LRsEN3c8q9tYPVed), webhook /webhook/atlaschat-chat-v5 (was /webhook/atlaschat-chat)"
   },
   "id": "wnHbfZ7Djko2G4HZ",
   "name": "Chat — Message Handler",

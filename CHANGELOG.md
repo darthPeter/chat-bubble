@@ -1,5 +1,14 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-06-15 — AtlasChat repointed to new brain (RAG-Agent-v5)
+
+### Message Handler (n8n `wnHbfZ7Djko2G4HZ`)
+- `atlaschat` `ROUTING` webhook changed from `/webhook/atlaschat-chat` → `/webhook/atlaschat-chat-v5` (new brain `AtlasChat-RAG-Agent-v5`, workflow `LRsEN3c8q9tYPVed` — active hybrid SQL+RAG agent)
+- Pre-flight: probed `/webhook/atlaschat-chat-v5` with the exact Message Handler payload shape → HTTP 200, returns `{ output }` (compatible with `Prepare Reply`). No brain-side auth (same as old brain; the shared `GlobalChatbot` header is ignored).
+- Other four clients (digishares, alkoholcz, pompo, ladenta) untouched. Old `atlaschat-chat` brain left in place (now unrouted), not deleted.
+
+---
+
 ## 2026-06-10 — LaDenta wired (Iva chat)
 
 ### Token Endpoint (n8n `ODrNXQASOPNObSWd`)
