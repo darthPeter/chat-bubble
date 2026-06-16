@@ -1,9 +1,9 @@
 {
   "_backup": {
-    "date": "2026-06-15",
-    "version": 67,
+    "date": "2026-06-16",
+    "version": 76,
     "source": "n8n MCP",
-    "note": "atlaschat ROUTING repointed to new brain AtlasChat-RAG-Agent-v5 (LRsEN3c8q9tYPVed), webhook /webhook/atlaschat-chat-v5 (was /webhook/atlaschat-chat)"
+    "note": "Call AI Webhook: JSON body now built via JSON.stringify (escapes quotes/newlines/backslashes in user messages — fixes silent no-reply bug found in AtlasChat testing, exec 26279) + onError:continueRegularOutput. Prepare Reply: per-client failure fallback (EN: digishares/atlaschat; CZ: alkoholcz/pompo/ladenta). timeout 30000→60000 (matches live)."
   },
   "id": "wnHbfZ7Djko2G4HZ",
   "name": "Chat — Message Handler",
@@ -135,9 +135,9 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"conversationSid\": \"{{ $json.conversationSid }}\",\n  \"message\": \"{{ $json.messageBody }}\",\n  \"author\": \"{{ $json.author }}\",\n  \"messageSid\": \"{{ $json.messageSid }}\"\n}",
+        "jsonBody": "={{ JSON.stringify({\n  conversationSid: $json.conversationSid,\n  message: $json.messageBody,\n  author: $json.author,\n  messageSid: $json.messageSid\n}) }}",
         "options": {
-          "timeout": 30000
+          "timeout": 60000
         }
       },
       "credentials": {
@@ -145,7 +145,8 @@
           "id": "__CREDENTIAL_ID__",
           "name": "__CREDENTIAL_NAME__"
         }
-      }
+      },
+      "onError": "continueRegularOutput"
     },
     {
       "id": "code-prepare-reply",
@@ -154,7 +155,7 @@
       "typeVersion": 2,
       "position": [1920, 304],
       "parameters": {
-        "jsCode": "const aiResponse = $json;\nconst conversationSid = $('Extract Message Data').first().json.conversationSid;\n\n// The client AI webhook should return a reply field\n// Supports: { reply: '...' } or { message: '...' } or { output: '...' } or plain text\nlet botReply = aiResponse.reply || aiResponse.message || aiResponse.output || aiResponse.text || '';\n\n// If response is a string at top level, use it directly\nif (!botReply && typeof aiResponse === 'string') {\n  botReply = aiResponse;\n}\n\nif (!botReply) {\n  botReply = 'Sorry, I could not generate a response.';\n}\n\nreturn [{\n  json: { conversationSid, botReply },\n}];"
+        "jsCode": "const aiResponse = $json;\nconst conversationSid = $('Extract Message Data').first().json.conversationSid;\nconst clientId = $('Route to Client').first().json.clientId || 'digishares';\n\n// The client AI webhook should return a reply field\n// Supports: { reply: '...' } or { message: '...' } or { output: '...' } or plain text\nlet botReply = aiResponse.reply || aiResponse.message || aiResponse.output || aiResponse.text || '';\n\n// If response is a string at top level, use it directly\nif (!botReply && typeof aiResponse === 'string') {\n  botReply = aiResponse;\n}\n\n// Per-client failure fallback. Fires when the AI call errored-through\n// (Call AI Webhook onError: continueRegularOutput) or returned an empty body.\nif (!botReply) {\n  const FALLBACK = {\n    digishares: 'Sorry, I could not generate a response just now. Please try again.',\n    alkoholcz:  'Omlouvám se, teď se mi nepodařilo odpovědět. Zkuste to prosím znovu.',\n    pompo:      'Omlouvám se, teď se mi nepodařilo odpovědět. Zkuste to prosím znovu.',\n    atlaschat:  'Sorry, I could not generate a response just now. Please try again.',\n    ladenta:    'Omlouvám se, teď se mi nepodařilo odpovědět. Zkuste to prosím znovu.',\n  };\n  botReply = FALLBACK[clientId] || FALLBACK.digishares;\n}\n\nreturn [{\n  json: { conversationSid, botReply },\n}];"
       }
     },
     {

@@ -1,5 +1,18 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-06-16 — Fix: Message Handler silently dropped messages with quotes/newlines/backslashes
+
+### Message Handler (n8n `wnHbfZ7Djko2G4HZ`) — shared infra, affects ALL clients
+- **Root cause** (found in AtlasChat V5 bubble testing, exec `26279`): `Call AI Webhook` built its JSON body by raw-interpolating the user message into a JSON string template. Any `"`, newline, or `\` produced invalid JSON → node threw "JSON parameter needs to be valid JSON" → AI webhook never called → user got **no reply, silently**. Intermittent (only special-char messages broke).
+- **Fix 1** — `Call AI Webhook` body now built with `JSON.stringify({...})` (handover "Option B"), which escapes quotes/newlines/backslashes/emoji/tabs. Reviewer-confirmed correct in `specifyBody: json` mode (no double-encoding).
+- **Fix 2** — `Call AI Webhook` set `onError: continueRegularOutput`: a failed/empty AI call now falls through to `Prepare Reply` instead of dying silently.
+- **Fix 3** — `Prepare Reply` per-client failure fallback (resolves `clientId` via `$('Route to Client')` node-ref so it works on the error item): EN for digishares/atlaschat, CZ for alkoholcz/pompo/ladenta.
+- Reviewer: universal-template sub-agent (flipped the fix from Option A→B, flagged the localized-fallback + forced-failure-test gaps — both actioned).
+- **Tested** (6 cases via simulated `/webhook/chat-message` POSTs): quotes, multi-line, the original long air-motor text, emoji+backslash (`C:\tools 🔧`), plain control → all reached `Call AI Webhook` = success (were 18ms JSON errors before, now 5–10s real AI calls). Forced-failure (1ms timeout) → `onError` continued → `Prepare Reply` emitted the atlaschat fallback → confirmed graceful. (Send-to-Twilio 404s in tests are expected — fake conversation SIDs.)
+- Not touched: `Prepare Safe Reply` (guardrail-blocked path) is still English-only — separate follow-up.
+
+---
+
 ## 2026-06-15 — AtlasChat repointed to new brain (RAG-Agent-v5)
 
 ### Message Handler (n8n `wnHbfZ7Djko2G4HZ`)
