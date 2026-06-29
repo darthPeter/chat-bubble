@@ -13,6 +13,7 @@
     theme: scriptTag.getAttribute("data-theme") || "",
     autoOpen: scriptTag.hasAttribute("data-auto-open"),
     autoOpenDelay: parseInt(scriptTag.getAttribute("data-auto-open-delay"), 10) || 2000,
+    endedMessage: scriptTag.getAttribute("data-ended-message") || "",
   };
 
   // ── Identity helper (client-namespaced when client-id is set) ────
@@ -70,6 +71,7 @@
   const saved = loadSession();
   let identity = saved?.identity || generateIdentity();
   let isOpen = false;
+  let restarting = false; // re-entrancy guard for restartAfterClose
   let activeStream = null; // current streaming operation (cancelable)
 
   // ── Shadow DOM host ────────────────────────────────────────────────
@@ -204,6 +206,12 @@
       align-self:flex-end;
       background:var(--cb-msg-user-bg);color:var(--cb-msg-user-color);
       border-bottom-right-radius:4px;
+    }
+    .cb-msg.system{
+      align-self:center;max-width:90%;
+      background:transparent;border:none;padding:4px 8px;
+      font-size:calc(var(--cb-font-size) - 2px);
+      font-style:italic;text-align:center;opacity:0.65;
     }
 
     /* ── Typing indicator ────────────────────────────────── */
@@ -635,6 +643,36 @@
     headerStatus.textContent = text;
   }
 
+  // ── Per-client "conversation ended" notice + closed detection ──────
+  const ENDED_MESSAGES = {
+    ladenta:    "Předchozí konverzace vypršela — pokračuji v nové.",
+    alkoholcz:  "Předchozí konverzace vypršela — pokračuji v nové.",
+    pompo:      "Předchozí konverzace vypršela — pokračuji v nové.",
+    atlaschat:  "Your previous conversation expired — continuing in a new one.",
+    digishares: "Your previous conversation expired — continuing in a new one.",
+  };
+  function endedMessage() {
+    return CFG.endedMessage || ENDED_MESSAGES[CFG.clientId] || ENDED_MESSAGES.digishares;
+  }
+
+  function appendSystemMessage(text) {
+    finishActiveStream();
+    const el = document.createElement("div");
+    el.className = "cb-msg system";
+    el.textContent = text;
+    messagesEl.insertBefore(el, typingEl);
+    if (isNearBottom()) requestAnimationFrame(() => scrollToBottom());
+  }
+
+  // Confirmed-closed signal: SDK conversation reports terminal 'closed' state,
+  // or the send error carries Twilio code 50377 (in err.body.code). We ONLY
+  // auto-restart on this — never on transient/network send failures.
+  function isClosedConversation(conv, err) {
+    try { if (conv && conv.state && conv.state.current === "closed") return true; } catch {}
+    const code = err && (err.code || (err.body && err.body.code));
+    return code === 50377;
+  }
+
   // ── Auto-resize textarea ──────────────────────────────────────────
   inputEl.addEventListener("input", () => {
     inputEl.style.height = "auto";
@@ -645,7 +683,7 @@
   // ── Send message ──────────────────────────────────────────────────
   async function sendMessage() {
     const text = inputEl.value.trim();
-    if (!text || !activeConversation) return;
+    if (!text || !activeConversation || restarting) return;
 
     appendMessage(text, "user");
     inputEl.value = "";
@@ -657,14 +695,20 @@
       // Show typing indicator while waiting for bot reply
       showTyping(true);
     } catch (err) {
-      console.error("[ChatBubble] Send failed:", err);
-      showTyping(false);
-      setStatus("Failed to send message. Please try again.", "error");
+      if (isClosedConversation(activeConversation, err)) {
+        // Conversation expired (idle 10-min terminal close) — restart + resend.
+        await restartAfterClose(text);
+      } else {
+        console.error("[ChatBubble] Send failed:", err);
+        showTyping(false);
+        setStatus("Failed to send message. Please try again.", "error");
+        btnSend.disabled = false;
+      }
     }
   }
 
   // ── Twilio connection ─────────────────────────────────────────────
-  async function connectTwilio() {
+  async function connectTwilio({ suppressWelcome = false } = {}) {
     if (!CFG.webhook) {
       setStatus("Chat is not configured (missing webhook).", "error");
       return;
@@ -801,7 +845,7 @@
       setHeaderStatus("Online");
 
       // 8. Trigger welcome message from AI (new conversations only)
-      if (!isRestore) {
+      if (!isRestore && !suppressWelcome) {
         try {
           showTyping(true);
           await activeConversation.sendMessage("[system] generate welcome message");
@@ -816,6 +860,43 @@
       setStatus(`Error: ${err.message || err}`, "error");
       twilioClient = null;
       activeConversation = null;
+    }
+  }
+
+  // ── Restart after the conversation closed (idle 10-min terminal close) ──
+  async function restartAfterClose(pendingText) {
+    if (restarting) return;
+    restarting = true;
+    try {
+      appendSystemMessage(endedMessage()); // lands after the user's optimistic bubble
+      showTyping(false);
+
+      clearSession();
+      identity = generateIdentity();
+      if (twilioClient) { try { await twilioClient.shutdown(); } catch {} }
+      twilioClient = null;
+      activeConversation = null;
+
+      await connectTwilio({ suppressWelcome: true });
+
+      if (activeConversation) {
+        try {
+          await activeConversation.sendMessage(pendingText);
+          showTyping(true);
+        } catch (e) {
+          console.error("[ChatBubble] Resend after restart failed:", e);
+          showTyping(false);
+          setStatus("Failed to send message. Please try again.", "error");
+          btnSend.disabled = false;
+        }
+      } else {
+        // connectTwilio failed (its own catch nulled activeConversation)
+        showTyping(false);
+        setStatus("Couldn't reconnect — please reload.", "error");
+        btnSend.disabled = false;
+      }
+    } finally {
+      restarting = false;
     }
   }
 
