@@ -1,5 +1,26 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-06-30 — Post-conversation analysis pipeline LIVE
+
+Conversations now auto-close after 10 min idle; the transcript is fetched and fanned out to per-client "postpro brains" via `ANALYSIS_ROUTING`. Consumer contract: `HANDOVER-postpro-brain-2026-06-30.md`.
+
+### Shipped (build steps 1–4)
+- **NEW workflow** `Chat — Post-Conversation Analysis` (dispatcher, n8n `V7lNIBygIteHXAl4`): parse `client_id` from `FriendlyName` → `GET` transcript → `ANALYSIS_ROUTING` lookup → POST to brain (or skip). All 5 clients empty in V1.
+- **widget.js** (`ef47942`): catch-on-send restart when a conversation is closed (per-client notice + fresh conversation + resend).
+- **Message Handler** (`wnHbfZ7Djko2G4HZ`): `Is State Event?` gate → `Unwrap Body` → `Run Post-Conv` (→ dispatcher); webhook kept `onReceived`; message path untouched.
+- **Token Endpoint** (`ODrNXQASOPNObSWd`): Create Conversation now sets `Timers.Closed=PT10M`.
+- **Twilio service** `IS8b1…`: post-webhook filters = `[onMessageAdded, onConversationStateUpdated]` (added, not replaced).
+
+### Verified
+- Real closed conversation → dispatcher built correct envelope (`client_id=atlaschat`, 4-msg transcript, `skipped_no_url`).
+- Real message round-trip still works (bot reply confirmed) after the filter change.
+- New conversation gets `date_closed`, no `date_inactive`.
+
+### Rollback
+Remove `onConversationStateUpdated` from the Twilio filter (drains pings) → revert Token `Timers.Closed` → revert MH gate (pre-gate backup = git `c7aa250`).
+
+---
+
 ## 2026-06-16 — Fix: Message Handler silently dropped messages with quotes/newlines/backslashes
 
 ### Message Handler (n8n `wnHbfZ7Djko2G4HZ`) — shared infra, affects ALL clients
