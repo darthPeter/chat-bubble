@@ -1,9 +1,9 @@
 {
   "_backup": {
-    "date": "2026-06-16",
-    "version": 76,
+    "date": "2026-06-30",
+    "version": 84,
     "source": "n8n MCP",
-    "note": "Call AI Webhook: JSON body now built via JSON.stringify (escapes quotes/newlines/backslashes in user messages — fixes silent no-reply bug found in AtlasChat testing, exec 26279) + onError:continueRegularOutput. Prepare Reply: per-client failure fallback (EN: digishares/atlaschat; CZ: alkoholcz/pompo/ladenta). timeout 30000→60000 (matches live)."
+    "note": "Post-conv gate added: Is State Event? (body.EventType==onConversationStateUpdated) → Unwrap Body → Run Post-Conv (Execute Workflow → dispatcher V7lNIBygIteHXAl4, onError continueRegularOutput); false branch = existing message flow. Webhook kept onReceived; message path unchanged. (Prior 2026-06-16: JSON.stringify body escaping fix + per-client failure fallback + timeout 60000.)"
   },
   "id": "wnHbfZ7Djko2G4HZ",
   "name": "Chat — Message Handler",
@@ -202,11 +202,63 @@
         },
         "options": {}
       }
+    },
+    {
+      "id": "if-state-event",
+      "name": "Is State Event?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [360, 96],
+      "parameters": {
+        "conditions": {
+          "options": { "version": 2, "leftValue": "", "caseSensitive": true, "typeValidation": "strict" },
+          "conditions": [
+            { "id": "c-state", "leftValue": "={{ $json.body.EventType }}", "rightValue": "onConversationStateUpdated", "operator": { "type": "string", "operation": "equals" } }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "code-unwrap-body",
+      "name": "Unwrap Body",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 80],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "// Twilio delivers the state event under .body; hand the dispatcher the event\n// fields at top level (StateTo, ConversationSid, ChatServiceSid, ...).\nreturn [{ json: $json.body }];"
+      }
+    },
+    {
+      "id": "exec-postconv",
+      "name": "Run Post-Conv",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.1,
+      "position": [760, 80],
+      "parameters": {
+        "source": "database",
+        "workflowId": { "__rl": true, "value": "V7lNIBygIteHXAl4", "mode": "id" },
+        "mode": "once",
+        "options": {}
+      },
+      "onError": "continueRegularOutput"
     }
   ],
   "connections": {
     "Twilio Message Webhook": {
-      "main": [[{"node": "Is User Message?", "type": "main", "index": 0}]]
+      "main": [[{"node": "Is State Event?", "type": "main", "index": 0}]]
+    },
+    "Is State Event?": {
+      "main": [
+        [{"node": "Unwrap Body", "type": "main", "index": 0}],
+        [{"node": "Is User Message?", "type": "main", "index": 0}]
+      ]
+    },
+    "Unwrap Body": {
+      "main": [[{"node": "Run Post-Conv", "type": "main", "index": 0}]]
     },
     "Is User Message?": {
       "main": [[{"node": "Extract Message Data", "type": "main", "index": 0}]]

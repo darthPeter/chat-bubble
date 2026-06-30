@@ -64,9 +64,10 @@ n8n Workflows:
 
 | Workflow | ID | Webhook Path | Status |
 |---|---|---|---|
-| Chat — Token Endpoint | `ODrNXQASOPNObSWd` | `/webhook/chat-token` | Active, security hardened |
-| Chat — Message Handler | `wnHbfZ7Djko2G4HZ` | `/webhook/chat-message` | Active, AI via client webhook |
+| Chat — Token Endpoint | `ODrNXQASOPNObSWd` | `/webhook/chat-token` | Active, security hardened; sets `Timers.Closed=PT10M` on new conversations |
+| Chat — Message Handler | `wnHbfZ7Djko2G4HZ` | `/webhook/chat-message` | Active, AI via client webhook; `Is State Event?` gate forwards `onConversationStateUpdated` → Post-Conv dispatcher |
 | Chat — Agent Token Endpoint | `Dv0ZfV2HELCw7Ske` | `/webhook/agent-token` | Active, agent auth + JWT |
+| Chat — Post-Conversation Analysis | `V7lNIBygIteHXAl4` | _(Execute Workflow, no webhook)_ | Active — on conversation close, fetches transcript → fans out per-client via `ANALYSIS_ROUTING` (all empty in V1). Contract: `HANDOVER-postpro-brain-2026-06-30.md` |
 
 ### Token Endpoint (11 nodes)
 ```

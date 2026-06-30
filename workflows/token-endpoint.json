@@ -97,6 +97,10 @@
             {
               "name": "FriendlyName",
               "value": "={{ 'chat_' + $('Chat Token Webhook').first().json.body.identity + '_' + Date.now() }}"
+            },
+            {
+              "name": "Timers.Closed",
+              "value": "PT10M"
             }
           ]
         },
@@ -236,9 +240,9 @@
     "executionOrder": "v1"
   },
   "_backup": {
-    "date": "2026-06-10",
-    "version": "v6.0 — ladenta added to CLIENTS table",
-    "n8n_version_counter": 257,
+    "date": "2026-06-30",
+    "version": "v7.0 — Timers.Closed=PT10M on Create Conversation (post-conv go-live)",
+    "n8n_version_counter": 314,
     "redacted_placeholders": {
       "__CLIENT_KEY_DIGISHARES__": "DigiShares client access key",
       "__CLIENT_KEY_ALKOHOLCZ__": "Alkohol.cz client access key",
