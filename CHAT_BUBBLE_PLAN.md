@@ -457,11 +457,7 @@ This is per-client AI brain config, not widget code.
 - [ ] **Dev/production separation** — set up before finishing live agent. See plan below.
 - [x] **New client: Pompo.cz** — theme + test page + routing deployed (2026-04-05)
 - [ ] **New client onboarding** — theme + test page + routing for additional clients
-- [ ] **Post-conversation webhook** — Twilio inactivity timer + transcript workflow + per-client analysis routing
-  - [x] Verify `onConversationStateUpdated` payload — confirmed: sends `ConversationSid`, `FriendlyName`, `State` (2026-03-13)
-  - [ ] Set `Timers.Inactive` on Create Conversation in Token Endpoint
-  - [ ] Add `onConversationStateUpdated` to Twilio Service webhook filters
-  - [ ] Build "Chat — Post-Conversation Analysis" workflow with client routing
+- [x] **Post-conversation analysis** — **LIVE 2026-06-30.** Final design differs from the §"Post-Conversation Webhook" sketch above: trigger on `Timers.Closed=PT10M` → `closed` (not inactive), dispatcher `V7lNIBygIteHXAl4`, catch-on-send in the widget. See `POST_CONV_BUILD_PLAN.md` (as-built) + `HANDOVER-postpro-brain-2026-06-30.md` (consumer contract). **Remaining:** wire each client's brain URL into `ANALYSIS_ROUTING` (all empty in V1) — eva-chat first.
 - [x] **Product cards** — rich product display for e-commerce clients, deployed (2026-04-07). See plan above.
 - [ ] **Real-time streaming** — SSE sideband architecture planned, not yet approved. Separate plan: [`STREAMING_PLAN.md`](STREAMING_PLAN.md)
 - [ ] **Live agent handoff** — in progress, steps 1-2 done. Separate plan: [`LIVE_AGENT_PLAN.md`](LIVE_AGENT_PLAN.md)

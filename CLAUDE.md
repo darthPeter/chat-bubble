@@ -50,12 +50,16 @@ n8n Workflows:
   - `demo.html` — DigiShares test page
   - `demo-alkoholcz.html` — Alkohol.cz test page (alkohol.cz in iframe background)
   - `demo-pompo.html` — Pompo.cz test page (pompo.cz in iframe background)
-  - `themes/default.css`, `themes/digishares.css`, `themes/alkoholcz.css`, `themes/pompo.css` — theme files
+  - `demo-atlaschat.html` — Atlas Copco ITBA test page · `demo-ladenta.html` — LaDenta (Iva) test page
+  - `themes/*.css` — per-client themes (default, digishares, alkoholcz, pompo, atlaschat, ladenta)
   - `workflows/` — n8n workflow JSON backups (secrets redacted)
   - `CHAT_BUBBLE_PLAN.md` — roadmap, plans, and TODO
   - `LIVE_AGENT_PLAN.md` — live agent handoff architecture and implementation status
   - `STREAMING_PLAN.md` — real-time SSE streaming architecture (planning, not yet implemented)
   - `CHANGELOG.md` — version history
+  - `POST_CONV_BUILD_PLAN.md` — post-conversation analysis pipeline (built + live 2026-06-30)
+  - `HANDOVER-postpro-brain-2026-06-30.md` — contract for client projects to build their postpro brain
+  - `archive/` — superseded docs (old spec, applied drafts)
 
 ## n8n Workflows
 
