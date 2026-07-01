@@ -1,13 +1,14 @@
 {
   "_backup": {
-    "date": "2026-06-30",
-    "version": "v1.0 — post-conv dispatcher created (go-live)",
+    "date": "2026-07-01",
+    "version": "v1.1 — first client wired: ladenta → eva-chat postpro brain",
     "source": "n8n MCP",
-    "note": "Dispatcher for post-conversation analysis. Called by Message Handler's Run Post-Conv (Execute Workflow). Parses client_id from FriendlyName, fetches transcript, fans out per-client via ANALYSIS_ROUTING (all empty in V1 → clean skip). Consumer contract: HANDOVER-postpro-brain-2026-06-30.md.",
+    "note": "Dispatcher for post-conversation analysis. Called by Message Handler's Run Post-Conv (Execute Workflow). Parses client_id from FriendlyName, fetches transcript, fans out per-client via ANALYSIS_ROUTING. ladenta now routes to eva-chat's postpro webhook (LaDenta/eva-chat, wf I67anAAV0BFfLwCL); other clients still empty → clean skip. Consumer contract: HANDOVER-postpro-brain-2026-06-30.md.",
     "redacted_placeholders": {
       "__TWILIO_BASIC_AUTH__": "Twilio Basic auth header: base64(API_KEY_SID:API_KEY_SECRET) — Fetch Conversation + Fetch Transcript nodes",
       "__CREDENTIAL_ID__": "GlobalChatbot httpHeaderAuth credential id (Send to Analysis Webhook node)",
-      "__CREDENTIAL_NAME__": "GlobalChatbot"
+      "__CREDENTIAL_NAME__": "GlobalChatbot",
+      "__ANALYSIS_WEBHOOK_URL_LADENTA__": "eva-chat postpro webhook URL (LaDenta/eva-chat) — https://n8n.<host>/webhook/eva-chat-postpro"
     }
   },
   "id": "V7lNIBygIteHXAl4",
@@ -82,7 +83,7 @@
       "parameters": {
         "mode": "runOnceForAllItems",
         "language": "javaScript",
-        "jsCode": "// Build the transcript envelope + look up the per-client analysis URL.\nconst ev = $('Is Closed?').first().json;        // original state event\nconst conv = $('Fetch Conversation').first().json; // conversation resource\nconst msgs = $json.messages || [];                 // from Fetch Transcript\n\n// Parse client_id from FriendlyName: chat_{clientId}_user_..._{ts}\nconst fn = conv.friendly_name || '';\nconst afterChat = fn.startsWith('chat_') ? fn.slice(5) : fn;\nlet clientId = 'digishares';\nif (afterChat.includes('_user_')) {\n  const before = afterChat.split('_user_')[0];\n  if (before) clientId = before;\n}\n\n// Empty conversation -> nothing to analyse, drop.\nif (msgs.length === 0) return [];\n\n// ── Per-client analysis routing (mirror of Message Handler ROUTING) ──\n// Empty webhookUrl = no postpro brain yet -> skip.\nconst ANALYSIS_ROUTING = {\n  digishares: { webhookUrl: '' },\n  alkoholcz:  { webhookUrl: '' },\n  pompo:      { webhookUrl: '' },\n  atlaschat:  { webhookUrl: '' },\n  ladenta:    { webhookUrl: '' },\n};\nconst route = ANALYSIS_ROUTING[clientId];\nconst analysisWebhookUrl = (route && route.webhookUrl) ? route.webhookUrl : '';\n\nconst CZ = ['alkoholcz', 'pompo', 'ladenta'];\nconst payload = {\n  conversation_sid: ev.ConversationSid,\n  client_id: clientId,\n  reason: ev.Reason || '',\n  state_from: ev.StateFrom || '',\n  locale: CZ.includes(clientId) ? 'cs' : 'en',\n  started_at: conv.date_created || '',\n  ended_at: ev.StateUpdated || '',\n  message_count: msgs.length,\n  transcript: msgs.map(m => ({ author: m.author, body: m.body, timestamp: m.date_created })),\n};\n\nreturn [{ json: { ...payload, analysisWebhookUrl, routing_status: analysisWebhookUrl ? 'routed' : 'skipped_no_url' } }];"
+        "jsCode": "// Build the transcript envelope + look up the per-client analysis URL.\nconst ev = $('Is Closed?').first().json;        // original state event\nconst conv = $('Fetch Conversation').first().json; // conversation resource\nconst msgs = $json.messages || [];                 // from Fetch Transcript\n\n// Parse client_id from FriendlyName: chat_{clientId}_user_..._{ts}\nconst fn = conv.friendly_name || '';\nconst afterChat = fn.startsWith('chat_') ? fn.slice(5) : fn;\nlet clientId = 'digishares';\nif (afterChat.includes('_user_')) {\n  const before = afterChat.split('_user_')[0];\n  if (before) clientId = before;\n}\n\n// Empty conversation -> nothing to analyse, drop.\nif (msgs.length === 0) return [];\n\n// ── Per-client analysis routing (mirror of Message Handler ROUTING) ──\n// Empty webhookUrl = no postpro brain yet -> skip.\nconst ANALYSIS_ROUTING = {\n  digishares: { webhookUrl: '' },\n  alkoholcz:  { webhookUrl: '' },\n  pompo:      { webhookUrl: '' },\n  atlaschat:  { webhookUrl: '' },\n  ladenta:    { webhookUrl: '__ANALYSIS_WEBHOOK_URL_LADENTA__' },\n};\nconst route = ANALYSIS_ROUTING[clientId];\nconst analysisWebhookUrl = (route && route.webhookUrl) ? route.webhookUrl : '';\n\nconst CZ = ['alkoholcz', 'pompo', 'ladenta'];\nconst payload = {\n  conversation_sid: ev.ConversationSid,\n  client_id: clientId,\n  reason: ev.Reason || '',\n  state_from: ev.StateFrom || '',\n  locale: CZ.includes(clientId) ? 'cs' : 'en',\n  started_at: conv.date_created || '',\n  ended_at: ev.StateUpdated || '',\n  message_count: msgs.length,\n  transcript: msgs.map(m => ({ author: m.author, body: m.body, timestamp: m.date_created })),\n};\n\nreturn [{ json: { ...payload, analysisWebhookUrl, routing_status: analysisWebhookUrl ? 'routed' : 'skipped_no_url' } }];"
       }
     },
     {
