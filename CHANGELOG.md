@@ -1,5 +1,21 @@
 # Changelog — Chat Bubble Widget
 
+## 2026-07-01 — First postpro client wired: LaDenta → eva-chat brain
+
+The post-conv dispatcher now routes a real client. Previously all 5 `ANALYSIS_ROUTING` entries were empty (clean skip).
+
+- **Dispatcher** `V7lNIBygIteHXAl4` (`Format & Route` node): `ladenta` → `https://n8n.srv1104100.hstgr.cloud/webhook/eva-chat-postpro` (eva-chat's postpro brain, their wf `I67anAAV0BFfLwCL`). Live + re-validated (0 errors).
+- **Auth:** outbound uses the existing `GlobalChatbot` httpHeaderAuth credential (`O7q7nPcQ1jLW2gNM`) — same one that already calls eva-chat's live `/webhook/eva-chat`. No change needed; `Auth` header matches.
+- **client_id note:** keyed under **`ladenta`** (what the widget sends), NOT eva-chat's requested `ladenta-chat`. The payload `client_id` will be `ladenta`. Communicated in the reply handover.
+- **Backup:** `workflows/post-conv-analysis.json` refreshed to v1.1 (URL redacted as `__ANALYSIS_WEBHOOK_URL_LADENTA__`).
+- **Reply handover:** `answer-to-evachat-register-2026-07-01.md` (answers `LaDenta/eva-chat/notes/handover-chatbot-2026-07-01-register.md`).
+- Commit `a96f8be`.
+
+### Rollback
+Set `ladenta` back to `{ webhookUrl: '' }` in the dispatcher's `Format & Route` node → clean skip resumes.
+
+---
+
 ## 2026-06-30 — Post-conversation analysis pipeline LIVE
 
 Conversations now auto-close after 10 min idle; the transcript is fetched and fanned out to per-client "postpro brains" via `ANALYSIS_ROUTING`. Consumer contract: `HANDOVER-postpro-brain-2026-06-30.md`.

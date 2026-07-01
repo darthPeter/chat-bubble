@@ -2,6 +2,8 @@
 
 > **CRITICAL RULE:** All project knowledge MUST live in this repo (git-tracked). This file holds core architecture, configs, and pointers to other docs. Detailed plans and specific topics get their own `.md` files — this file links to them. Never bloat this file with deep-dive details, but make sure it knows where to FIND everything. Claude Code memory files are SHORT-TERM CACHE only — never store long-term knowledge there.
 
+> **READ FIRST (current state):** latest session bookmark = `HANDOVER-session-2026-07-01.md` (post-conv pipeline LIVE; `ladenta` wired to eva-chat; only open action = route the reply handover to eva-chat). Start there on a fresh session.
+
 ## Project Overview
 
 Embeddable chat bubble widget hosted on GitHub Pages. Any client website adds a single `<script>` tag to get an AI chat interface. Backend is n8n, real-time messaging via Twilio Conversations SDK (WebSocket).
@@ -71,7 +73,7 @@ n8n Workflows:
 | Chat — Token Endpoint | `ODrNXQASOPNObSWd` | `/webhook/chat-token` | Active, security hardened; sets `Timers.Closed=PT10M` on new conversations |
 | Chat — Message Handler | `wnHbfZ7Djko2G4HZ` | `/webhook/chat-message` | Active, AI via client webhook; `Is State Event?` gate forwards `onConversationStateUpdated` → Post-Conv dispatcher |
 | Chat — Agent Token Endpoint | `Dv0ZfV2HELCw7Ske` | `/webhook/agent-token` | Active, agent auth + JWT |
-| Chat — Post-Conversation Analysis | `V7lNIBygIteHXAl4` | _(Execute Workflow, no webhook)_ | Active — on conversation close, fetches transcript → fans out per-client via `ANALYSIS_ROUTING` (all empty in V1). Contract: `HANDOVER-postpro-brain-2026-06-30.md` |
+| Chat — Post-Conversation Analysis | `V7lNIBygIteHXAl4` | _(Execute Workflow, no webhook)_ | Active — on conversation close, fetches transcript → fans out per-client via `ANALYSIS_ROUTING` (`ladenta` → eva-chat postpro brain since 2026-07-01; other 4 clients empty → clean skip). Contract: `HANDOVER-postpro-brain-2026-06-30.md` |
 
 ### Token Endpoint (11 nodes)
 ```
